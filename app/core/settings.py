@@ -69,4 +69,4 @@ class Settings(BaseSettings):
     max_concurrent_users: int = 100
 
 
-settings = Settings()  # type: ignore[var-annotated]
+settings = Settings()  # type: ignore[call-arg]
