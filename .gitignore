@@ -1,0 +1,41 @@
+# Python и общие файлы
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Среды выполнения
+.env
+.venv/
+venv/
+env/
+
+# IDE и редакторы
+.idea/
+.vscode/
+.cursor/
+
+# Сборка и артефакты
+build/
+dist/
+*.egg-info/
+
+# Тесты и покрытие
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Логи и временные файлы
+logs/
+*.log
+*.tmp
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# Секреты и производственные конфиги
+deploy/secrets/
+
+# Системные файлы
+.DS_Store
+Thumbs.db

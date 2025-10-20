@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Получение кода"
+        uses: actions/checkout@v4
+
+      - name: "Установка Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: "Установка зависимостей"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black flake8 mypy pytest
+
+      - name: "Проверка форматирования (black)"
+        run: black --check .
+
+      - name: "Статический анализ (flake8)"
+        run: flake8
+
+      - name: "Проверка типов (mypy)"
+        run: mypy app
+
+      - name: "Запуск тестов (pytest)"
+        run: pytest

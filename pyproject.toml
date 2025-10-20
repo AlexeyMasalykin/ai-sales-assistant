@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+include = "\\.pyi?$"
+exclude = "/(\\.git|\\.venv|build|dist|migrations/versions)/"
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip_glob = ["migrations/versions/*"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+plugins = []
+exclude = ["migrations/versions"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203,E501,W503"
+exclude = ".git,__pycache__,.venv,migrations/versions"

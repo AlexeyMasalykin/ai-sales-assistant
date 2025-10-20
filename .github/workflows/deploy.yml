@@ -1,0 +1,42 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Целевая среда (staging/production)"
+        required: true
+        default: "staging"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Получение кода"
+        uses: actions/checkout@v4
+
+      - name: "Авторизация в контейнерном реестре"
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_HOST }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: "Сборка и публикация образа"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.REGISTRY_HOST }}/${{ secrets.REGISTRY_REPO }}:${{ github.sha }}
+
+      - name: "Деплой на Hetzner"
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            cd /opt/sales-assistant
+            export IMAGE=${{ secrets.REGISTRY_HOST }}/${{ secrets.REGISTRY_REPO }}:${{ github.sha }}
+            docker compose -f deploy/hetzner-compose.yml pull app
+            docker compose -f deploy/hetzner-compose.yml up -d --remove-orphans

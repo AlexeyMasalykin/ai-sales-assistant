@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: sales-assistant-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - backend
+    ports:
+      - "8001:8000"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: sales-assistant-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: assistant
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: sales-assistant-redis
+    restart: unless-stopped
+    command: >
+      redis-server --appendonly yes
+    networks:
+      - backend
+    volumes:
+      - redis_data:/data
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: sales-assistant-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  backend:
