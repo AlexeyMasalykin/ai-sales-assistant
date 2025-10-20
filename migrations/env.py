@@ -24,7 +24,8 @@ def _get_url() -> str:
     return settings.database_url
 
 
-target_metadata = None  # TODO: Подключить метаданные моделей после их создания.
+# TODO: Подключить метаданные моделей после их создания.
+target_metadata = None
 
 
 def run_migrations_offline() -> None:

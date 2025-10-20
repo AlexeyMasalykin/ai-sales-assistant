@@ -29,7 +29,12 @@ def upgrade() -> None:
         ),
         sa.Column("email", sa.String(length=255), nullable=False, unique=True),
         sa.Column("full_name", sa.String(length=255), nullable=True),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+        sa.Column(
+            "is_active",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("true"),
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -60,7 +65,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("source", sa.String(length=50), nullable=False),
-        sa.Column("status", sa.String(length=50), nullable=False, server_default="new"),
+        sa.Column(
+            "status",
+            sa.String(length=50),
+            nullable=False,
+            server_default="new",
+        ),
         sa.Column("metadata", sa.JSON(), nullable=True),
         sa.Column(
             "created_at",

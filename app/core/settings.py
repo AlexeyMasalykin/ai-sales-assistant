@@ -54,7 +54,11 @@ class Settings(BaseSettings):
     jwt_secret_key: SecretStr
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 1440
-    environment: Literal["development", "staging", "production"] = "development"
+    environment: Literal[
+        "development",
+        "staging",
+        "production",
+    ] = "development"
     log_level: str = "INFO"
     sentry_dsn: str | None = None
 
