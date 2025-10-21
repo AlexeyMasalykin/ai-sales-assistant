@@ -111,7 +111,8 @@ class AvitoSyncManager:
                 stats["failed"] += 1
                 retry_after = exc.retry_after or 60
                 logger.warning(
-                    "Превышен лимит Avito при синхронизации %s. Повтор через %s секунд.",
+                    "Превышен лимит Avito при синхронизации %s. "
+                    "Повтор через %s секунд.",
                     item_id,
                     retry_after,
                 )
