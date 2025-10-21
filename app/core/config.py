@@ -52,10 +52,6 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
 
-# Создаём глобальный экземпляр настроек
-settings = Settings()  # type: ignore[call-arg]
-
-
 def load_environment(env_file: Optional[str] = None) -> None:
     """Загружает переменные окружения из файла `.env`."""
     if env_file:
@@ -64,3 +60,19 @@ def load_environment(env_file: Optional[str] = None) -> None:
     default_path = Path(".env")
     if default_path.exists():
         load_dotenv(dotenv_path=default_path, override=True)
+
+
+# Ленивая инициализация настроек
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Возвращает экземпляр настроек, создавая его при необходимости."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()  # type: ignore[call-arg]
+    return _settings
+
+
+# Обратная совместимость с существующим импортом
+settings = get_settings()

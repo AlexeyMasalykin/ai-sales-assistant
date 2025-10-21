@@ -33,9 +33,9 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
 
     # Avito
-    avito_client_id: str
-    avito_client_secret: SecretStr
-    avito_user_id: str
+    avito_client_id: str = "test"
+    avito_client_secret: SecretStr = SecretStr("test")
+    avito_user_id: str = "test"
     avito_api_base_url: str = "https://api.avito.ru"
     avito_token_ttl: int = 86_400
     avito_token_refresh_before: int = 3_600
