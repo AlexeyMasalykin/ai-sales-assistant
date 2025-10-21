@@ -25,11 +25,15 @@ def test_client(monkeypatch: pytest.MonkeyPatch):
         yield client
 
 
-def test_webhook_endpoint_receives_message(monkeypatch: pytest.MonkeyPatch, test_client: TestClient):
+def test_webhook_endpoint_receives_message(
+    monkeypatch: pytest.MonkeyPatch, test_client: TestClient
+):
     """Webhook принимает сообщение и отвечает OK."""
     validate_mock = AsyncMock(return_value=True)
     queue_mock = AsyncMock()
-    monkeypatch.setattr("app.api.routes.avito.webhook_handler.validate_signature", validate_mock)
+    monkeypatch.setattr(
+        "app.api.routes.avito.webhook_handler.validate_signature", validate_mock
+    )
     monkeypatch.setattr("app.api.routes.avito.webhook_handler.add_to_queue", queue_mock)
 
     payload = {
@@ -53,7 +57,9 @@ def test_webhook_endpoint_receives_message(monkeypatch: pytest.MonkeyPatch, test
     queue_mock.assert_awaited_with(payload)
 
 
-def test_webhook_endpoint_fast_response(monkeypatch: pytest.MonkeyPatch, test_client: TestClient):
+def test_webhook_endpoint_fast_response(
+    monkeypatch: pytest.MonkeyPatch, test_client: TestClient
+):
     """Ответ на webhook возвращается быстрее одной секунды."""
     monkeypatch.setattr(
         "app.api.routes.avito.webhook_handler.validate_signature",
@@ -74,7 +80,9 @@ def test_webhook_endpoint_fast_response(monkeypatch: pytest.MonkeyPatch, test_cl
     assert elapsed < 1.0
 
 
-def test_webhook_signature_validation(monkeypatch: pytest.MonkeyPatch, test_client: TestClient):
+def test_webhook_signature_validation(
+    monkeypatch: pytest.MonkeyPatch, test_client: TestClient
+):
     """Неверная подпись приводит к отказу 403."""
     monkeypatch.setattr(
         "app.api.routes.avito.webhook_handler.validate_signature",
@@ -85,7 +93,9 @@ def test_webhook_signature_validation(monkeypatch: pytest.MonkeyPatch, test_clie
         AsyncMock(),
     )
 
-    response = test_client.post("/api/v1/webhooks/avito/messages", json={"event_type": "test"})
+    response = test_client.post(
+        "/api/v1/webhooks/avito/messages", json={"event_type": "test"}
+    )
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid signature"

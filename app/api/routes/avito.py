@@ -30,7 +30,9 @@ async def receive_avito_webhook(request: Request) -> dict[str, str]:
         payload: dict[str, Any] = await request.json()
     except ValueError as exc:
         logger.error("Avito webhook: некорректный JSON: {}", exc)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON"
+        ) from exc
 
     event_type = payload.get("event_type", "unknown")
     logger.info("Получен webhook от Avito: %s", event_type)
@@ -40,7 +42,9 @@ async def receive_avito_webhook(request: Request) -> dict[str, str]:
     is_valid = await webhook_handler.validate_signature(payload, signature)
     if not is_valid:
         logger.warning("Webhook Avito отклонён: подпись недействительна.")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid signature")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid signature"
+        )
 
     await webhook_handler.add_to_queue(payload)
     return {"status": "ok"}
@@ -58,7 +62,9 @@ async def register_avito_webhook(
     try:
         result = await webhook_handler.register_webhook(request.webhook_url)
     except AvitoRateLimitError as exc:
-        logger.warning("Превышен лимит Avito при регистрации webhook: {}", exc.retry_after)
+        logger.warning(
+            "Превышен лимит Avito при регистрации webhook: {}", exc.retry_after
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Avito rate limit, попробуйте позже.",
@@ -153,7 +159,9 @@ async def get_user_items() -> dict[str, Any]:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         logger.error("Неожиданная ошибка получения объявлений Avito: {}", exc)
-        raise HTTPException(status_code=500, detail="Не удалось получить объявления.") from exc
+        raise HTTPException(
+            status_code=500, detail="Не удалось получить объявления."
+        ) from exc
 
 
 @router.get(
@@ -169,7 +177,9 @@ async def get_item_statistics(item_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         logger.error("Неожиданная ошибка статистики Avito %s: %s", item_id, exc)
-        raise HTTPException(status_code=500, detail="Не удалось получить статистику.") from exc
+        raise HTTPException(
+            status_code=500, detail="Не удалось получить статистику."
+        ) from exc
 
 
 @router.post(
@@ -185,7 +195,9 @@ async def apply_vas(item_id: str, vas_request: AvitoVASRequest) -> dict[str, Any
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         logger.error("Неожиданная ошибка применения VAS к %s: %s", item_id, exc)
-        raise HTTPException(status_code=500, detail="Не удалось применить VAS услугу.") from exc
+        raise HTTPException(
+            status_code=500, detail="Не удалось применить VAS услугу."
+        ) from exc
 
 
 @router.post(
@@ -195,12 +207,18 @@ async def apply_vas(item_id: str, vas_request: AvitoVASRequest) -> dict[str, Any
 async def start_sync(options: AvitoSyncOptions | None = None) -> dict[str, Any]:
     """Запускает автоматическую синхронизацию объявлений Avito."""
     try:
-        interval = options.interval_minutes if options else settings.avito_sync_interval_minutes
+        interval = (
+            options.interval_minutes
+            if options
+            else settings.avito_sync_interval_minutes
+        )
         await sync_manager.start_sync(interval_minutes=interval)
         return {"status": "started", "interval_minutes": interval}
     except Exception as exc:  # noqa: BLE001
         logger.error("Ошибка запуска синхронизации Avito: {}", exc)
-        raise HTTPException(status_code=500, detail="Не удалось запустить синхронизацию.") from exc
+        raise HTTPException(
+            status_code=500, detail="Не удалось запустить синхронизацию."
+        ) from exc
 
 
 @router.post(
@@ -214,7 +232,9 @@ async def stop_sync() -> dict[str, str]:
         return {"status": "stopped"}
     except Exception as exc:  # noqa: BLE001
         logger.error("Ошибка остановки синхронизации Avito: {}", exc)
-        raise HTTPException(status_code=500, detail="Не удалось остановить синхронизацию.") from exc
+        raise HTTPException(
+            status_code=500, detail="Не удалось остановить синхронизацию."
+        ) from exc
 
 
 @router.post(
@@ -227,4 +247,6 @@ async def sync_now() -> dict[str, Any]:
         return await sync_manager.sync_all_items()
     except Exception as exc:  # noqa: BLE001
         logger.error("Ошибка мгновенной синхронизации Avito: {}", exc)
-        raise HTTPException(status_code=500, detail="Не удалось выполнить синхронизацию.") from exc
+        raise HTTPException(
+            status_code=500, detail="Не удалось выполнить синхронизацию."
+        ) from exc

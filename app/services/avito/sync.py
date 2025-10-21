@@ -167,7 +167,9 @@ class AvitoSyncManager:
         )
         return {"cached": False, "data": stats}
 
-    async def apply_vas_service(self, item_id: str, service_code: str) -> dict[str, Any]:
+    async def apply_vas_service(
+        self, item_id: str, service_code: str
+    ) -> dict[str, Any]:
         """Применяет VAS-услугу к объявлению (заглушка)."""
         logger.info("Применение VAS '%s' к объявлению %s.", service_code, item_id)
         result = {

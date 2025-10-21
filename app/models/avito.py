@@ -14,7 +14,9 @@ class AvitoWebhookMessage(BaseModel):
     message_id: str = Field(..., alias="id", description="Идентификатор сообщения.")
     text: Optional[str] = Field(default=None, description="Текст сообщения, если есть.")
     author_id: str = Field(..., description="Идентификатор автора сообщения.")
-    created_at: str = Field(..., description="Время создания сообщения в формате ISO 8601.")
+    created_at: str = Field(
+        ..., description="Время создания сообщения в формате ISO 8601."
+    )
     message_type: Optional[str] = Field(
         default=None,
         alias="type",

@@ -14,7 +14,9 @@ load_environment()
 class Settings(BaseSettings):
     """Глобальные настройки приложения."""
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=False, extra="ignore"
+    )
 
     # Supabase / PostgreSQL
     supabase_url: str
@@ -90,7 +92,6 @@ class Settings(BaseSettings):
         if isinstance(value, list):
             return value
         return ["*"]
-
 
 
 settings = Settings()  # type: ignore[call-arg]

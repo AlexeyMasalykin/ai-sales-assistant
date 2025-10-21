@@ -135,12 +135,16 @@ class AvitoWebhookHandler:
                 str(message_data.get("image_url", "")),
             )
         else:
-            logger.debug("Avito: тип сообщения %s не поддерживается автоответом.", message_type)
+            logger.debug(
+                "Avito: тип сообщения %s не поддерживается автоответом.", message_type
+            )
 
         if settings.avito_auto_reply_enabled and response:
             await self._send_with_retry(chat_id, response)
         else:
-            logger.info("Avito: автоответ отключён или не требуется для чата %s.", chat_id)
+            logger.info(
+                "Avito: автоответ отключён или не требуется для чата %s.", chat_id
+            )
 
     async def _generate_response(self, message_text: str, chat_id: str) -> str:
         """Генерирует ответ по тексту сообщения."""
@@ -178,7 +182,9 @@ class AvitoWebhookHandler:
             except Exception as exc:  # noqa: BLE001
                 logger.error("Avito: критическая ошибка отправки сообщения: %s", exc)
                 await asyncio.sleep(2**attempt)
-        logger.error("Avito: не удалось отправить сообщение в чат %s после 3 попыток.", chat_id)
+        logger.error(
+            "Avito: не удалось отправить сообщение в чат %s после 3 попыток.", chat_id
+        )
 
     async def register_webhook(self, webhook_url: str) -> dict[str, Any]:
         """Регистрирует webhook URL в Avito."""

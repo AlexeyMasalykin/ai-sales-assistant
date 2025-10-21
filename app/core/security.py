@@ -25,10 +25,7 @@ def create_access_token(
 ) -> str:
     """Создаёт JWT токен."""
     now = datetime.now(timezone.utc)
-    expires = now + (
-        expires_delta
-        or timedelta(minutes=settings.jwt_expire_minutes)
-    )
+    expires = now + (expires_delta or timedelta(minutes=settings.jwt_expire_minutes))
     payload: dict[str, Any] = {
         "sub": subject,
         "iat": int(now.timestamp()),

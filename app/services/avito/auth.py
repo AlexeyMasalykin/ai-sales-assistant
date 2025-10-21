@@ -93,7 +93,9 @@ class AvitoAuthManager:
                 )
         except httpx.TimeoutException as exc:
             logger.error("Таймаут запроса токена Avito: {}", exc)
-            raise AvitoAPITimeoutError("Истекло время ожидания ответа от Avito.") from exc
+            raise AvitoAPITimeoutError(
+                "Истекло время ожидания ответа от Avito."
+            ) from exc
         except httpx.RequestError as exc:
             logger.error("Сетевая ошибка при запросе токена Avito: {}", exc)
             raise AvitoAuthError("Ошибка сети при запросе токена Avito.") from exc
