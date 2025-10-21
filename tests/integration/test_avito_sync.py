@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -13,10 +13,10 @@ from app.services.avito.sync import AvitoSyncManager
 
 
 @pytest.mark.asyncio
-async def test_sync_manager_start_stop(monkeypatch: pytest.MonkeyPatch):
+async def test_sync_manager_start_stop(monkeypatch: pytest.MonkeyPatch) -> None:
     """Проверяет запуск и остановку фоновой синхронизации."""
     manager = AvitoSyncManager()
-    manager.sync_all_items = AsyncMock(return_value={})
+    monkeypatch.setattr(manager, "sync_all_items", AsyncMock(return_value={}))
 
     await manager.start_sync(interval_minutes=1)
     await asyncio.sleep(0)
@@ -30,16 +30,16 @@ async def test_sync_manager_start_stop(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.asyncio
-async def test_sync_all_items(mock_redis):
+async def test_sync_all_items(mock_redis: AsyncMock) -> None:
     """Успешная синхронизация объявлений сохраняет данные в кэш."""
 
-    async def get_items():
+    async def get_items() -> list[dict[str, str]]:
         return [
             {"id": "item1", "title": "Test 1"},
             {"id": "item2", "title": "Test 2"},
         ]
 
-    async def get_item_stats(_: str):
+    async def get_item_stats(_: str) -> dict[str, int]:
         return {"views": 100, "contacts": 5}
 
     manager = AvitoSyncManager()
@@ -56,7 +56,7 @@ async def test_sync_all_items(mock_redis):
 
 
 @pytest.mark.asyncio
-async def test_get_item_statistics_caching(mock_redis):
+async def test_get_item_statistics_caching(mock_redis: AsyncMock) -> None:
     """Статистика возвращается из кэша при наличии данных."""
     cached_payload = {"views": 10, "contacts": 2}
     mock_redis.get.return_value = json.dumps(cached_payload)
@@ -69,7 +69,7 @@ async def test_get_item_statistics_caching(mock_redis):
 
 
 @pytest.mark.asyncio
-async def test_get_item_statistics_fetch(mock_redis):
+async def test_get_item_statistics_fetch(mock_redis: AsyncMock) -> None:
     """При отсутствии кэша данные запрашиваются из API."""
     mock_redis.get.return_value = None
 
@@ -86,7 +86,7 @@ async def test_get_item_statistics_fetch(mock_redis):
 
 
 @pytest.mark.asyncio
-async def test_apply_vas_service():
+async def test_apply_vas_service() -> None:
     """Применение VAS услуги возвращает заглушку с нужными полями."""
     manager = AvitoSyncManager()
     result = await manager.apply_vas_service("item123", "highlight")

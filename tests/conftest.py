@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Generator
 from unittest.mock import AsyncMock
 
 import pytest
 
 
 @pytest.fixture
-def mock_redis():
+def mock_redis() -> AsyncMock:
     """Возвращает замоканный Redis клиент."""
     redis = AsyncMock()
     redis.get = AsyncMock(return_value=None)
@@ -24,7 +25,10 @@ def mock_redis():
 
 
 @pytest.fixture(autouse=True)
-def patch_redis(monkeypatch: pytest.MonkeyPatch, mock_redis: AsyncMock):
+def patch_redis(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_redis: AsyncMock,
+) -> Generator[AsyncMock, None, None]:
     """Патчит Redis клиент во всех релевантных модулях."""
     monkeypatch.setattr("app.core.cache.redis_client", mock_redis)
     monkeypatch.setattr("app.services.avito.auth.redis_client", mock_redis)
@@ -33,7 +37,7 @@ def patch_redis(monkeypatch: pytest.MonkeyPatch, mock_redis: AsyncMock):
 
 
 @pytest.fixture
-def mock_avito_api():
+def mock_avito_api() -> AsyncMock:
     """Возвращает замоканный Avito API клиент."""
     api = AsyncMock()
     api.send_message = AsyncMock(return_value={"status": "sent"})

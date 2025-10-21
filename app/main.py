@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -42,6 +43,7 @@ UNPROTECTED_PATHS = {
 load_environment()
 
 
+@asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     """Управляет жизненным циклом приложения."""
     configure_logging()
@@ -70,7 +72,10 @@ def setup_middlewares(app: FastAPI) -> None:
     )
 
     @app.middleware("http")
-    async def enforce_jwt(request: Request, call_next):
+    async def enforce_jwt(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         """Проверяет JWT для защищённых эндпоинтов."""
         if request.url.path in UNPROTECTED_PATHS:
             return await call_next(request)

@@ -12,7 +12,7 @@ from app.main import app
 
 
 @pytest.fixture
-def test_client(monkeypatch: pytest.MonkeyPatch):
+def test_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Возвращает TestClient с заглушенными зависимостями старта/остановки."""
 
     async def noop() -> None:
@@ -27,7 +27,7 @@ def test_client(monkeypatch: pytest.MonkeyPatch):
 
 def test_webhook_endpoint_receives_message(
     monkeypatch: pytest.MonkeyPatch, test_client: TestClient
-):
+) -> None:
     """Webhook принимает сообщение и отвечает OK."""
     validate_mock = AsyncMock(return_value=True)
     queue_mock = AsyncMock()
@@ -59,7 +59,7 @@ def test_webhook_endpoint_receives_message(
 
 def test_webhook_endpoint_fast_response(
     monkeypatch: pytest.MonkeyPatch, test_client: TestClient
-):
+) -> None:
     """Ответ на webhook возвращается быстрее одной секунды."""
     monkeypatch.setattr(
         "app.api.routes.avito.webhook_handler.validate_signature",
@@ -82,7 +82,7 @@ def test_webhook_endpoint_fast_response(
 
 def test_webhook_signature_validation(
     monkeypatch: pytest.MonkeyPatch, test_client: TestClient
-):
+) -> None:
     """Неверная подпись приводит к отказу 403."""
     monkeypatch.setattr(
         "app.api.routes.avito.webhook_handler.validate_signature",

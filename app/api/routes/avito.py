@@ -56,7 +56,7 @@ async def receive_avito_webhook(request: Request) -> dict[str, str]:
 )
 async def register_avito_webhook(
     request: WebhookRegistrationRequest,
-    current_user=Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Регистрирует URL webhook в Avito Messenger."""
     try:
@@ -89,7 +89,7 @@ async def register_avito_webhook(
     response_model=WebhookStatusResponse,
 )
 async def get_avito_webhook_status(
-    current_user=Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> WebhookStatusResponse:
     """Возвращает статус текущей подписки Avito webhook."""
     try:
@@ -126,7 +126,7 @@ async def get_avito_webhook_status(
     status_code=status.HTTP_200_OK,
 )
 async def unregister_avito_webhook(
-    current_user=Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Удаляет активную подписку Avito webhook."""
     try:
@@ -149,7 +149,9 @@ async def unregister_avito_webhook(
     "/avito/items",
     dependencies=[Depends(get_current_user)],
 )
-async def get_user_items() -> dict[str, Any]:
+async def get_user_items(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Возвращает список объявлений пользователя Avito."""
     try:
         items = await sync_manager.client.get_items()
@@ -168,7 +170,10 @@ async def get_user_items() -> dict[str, Any]:
     "/avito/items/{item_id}/stats",
     dependencies=[Depends(get_current_user)],
 )
-async def get_item_statistics(item_id: str) -> dict[str, Any]:
+async def get_item_statistics(
+    item_id: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Возвращает статистику конкретного объявления Avito."""
     try:
         return await sync_manager.get_item_statistics(item_id)
@@ -186,7 +191,11 @@ async def get_item_statistics(item_id: str) -> dict[str, Any]:
     "/avito/items/{item_id}/vas",
     dependencies=[Depends(get_current_user)],
 )
-async def apply_vas(item_id: str, vas_request: AvitoVASRequest) -> dict[str, Any]:
+async def apply_vas(
+    item_id: str,
+    vas_request: AvitoVASRequest,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Применяет VAS-услугу к указанному объявлению."""
     try:
         return await sync_manager.apply_vas_service(item_id, vas_request.service_code)

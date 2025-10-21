@@ -13,7 +13,7 @@ from app.main import app  # noqa: E402
 client = TestClient(app)
 
 
-def test_root_endpoint():
+def test_root_endpoint() -> None:
     """Тест корневого endpoint."""
     response = client.get("/")
     assert response.status_code == 200

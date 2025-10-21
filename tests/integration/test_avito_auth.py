@@ -8,7 +8,7 @@ from app.services.avito.exceptions import AvitoAuthError
 
 
 @pytest.mark.asyncio
-async def test_get_access_token_success(mock_redis):
+async def test_get_access_token_success(mock_redis: AsyncMock) -> None:
     """Получение нового access token при отсутствии кэша."""
     mock_redis.get.return_value = None
 
@@ -35,7 +35,7 @@ async def test_get_access_token_success(mock_redis):
 
 
 @pytest.mark.asyncio
-async def test_token_caching(mock_redis):
+async def test_token_caching(mock_redis: AsyncMock) -> None:
     """Использование токена из Redis при достаточном TTL."""
     mock_redis.get.return_value = "cached_token"
     mock_redis.ttl.return_value = 7_200
@@ -47,7 +47,7 @@ async def test_token_caching(mock_redis):
 
 
 @pytest.mark.asyncio
-async def test_token_refresh_before_expiry(mock_redis):
+async def test_token_refresh_before_expiry(mock_redis: AsyncMock) -> None:
     """Обновление токена за час до истечения."""
     mock_redis.get.return_value = "old_token"
     mock_redis.ttl.return_value = 200  # < 3600
@@ -72,7 +72,7 @@ async def test_token_refresh_before_expiry(mock_redis):
 
 
 @pytest.mark.asyncio
-async def test_auth_error_401():
+async def test_auth_error_401() -> None:
     """Обработка ошибки 401 от Avito."""
     mock_response = MagicMock()
     mock_response.status_code = 401

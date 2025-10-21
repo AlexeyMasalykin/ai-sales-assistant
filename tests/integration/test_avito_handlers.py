@@ -8,7 +8,7 @@ from app.services.avito.handlers import AvitoMessageHandlers
 
 
 @pytest.mark.asyncio
-async def test_handle_greeting_message():
+async def test_handle_greeting_message() -> None:
     """Обработка приветствия должна возвращать приветственный текст."""
     response = await AvitoMessageHandlers.handle_text_message(
         "chat123",
@@ -21,7 +21,7 @@ async def test_handle_greeting_message():
 
 
 @pytest.mark.asyncio
-async def test_handle_price_question():
+async def test_handle_price_question() -> None:
     """Ответ на вопрос о цене содержит информацию о тарифах."""
     response = await AvitoMessageHandlers.handle_text_message(
         "chat123",
@@ -34,7 +34,7 @@ async def test_handle_price_question():
 
 
 @pytest.mark.asyncio
-async def test_handle_contact_request():
+async def test_handle_contact_request() -> None:
     """Запрос контактов возвращает информацию о каналах связи."""
     response = await AvitoMessageHandlers.handle_text_message(
         "chat123",
@@ -46,7 +46,7 @@ async def test_handle_contact_request():
 
 
 @pytest.mark.asyncio
-async def test_handle_default_message():
+async def test_handle_default_message() -> None:
     """Неизвестный запрос приводит к универсальному ответу."""
     response = await AvitoMessageHandlers.handle_text_message(
         "chat123",
@@ -59,7 +59,7 @@ async def test_handle_default_message():
 
 
 @pytest.mark.asyncio
-async def test_handle_image_message():
+async def test_handle_image_message() -> None:
     """Сообщение с изображением возвращает подтверждение."""
     response = await AvitoMessageHandlers.handle_image_message(
         "chat123",

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Awaitable, Callable, Iterable
 
-from fastapi import Request
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 from app.core.cache import redis_client
 
@@ -17,7 +18,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         *,
         limit: int,
         window_seconds: int,
@@ -28,7 +29,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window_seconds = window_seconds
         self.exempt_paths = set(exempt_paths or [])
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         """Применяет проверку лимита перед выполнением запроса."""
         if request.url.path in self.exempt_paths:
             return await call_next(request)

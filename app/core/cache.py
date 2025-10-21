@@ -18,7 +18,9 @@ redis_client: Redis = Redis.from_url(
 async def verify_redis() -> None:
     """Проверяет доступность Redis."""
     try:
-        await redis_client.ping()
+        result: bool = await redis_client.ping()
+        if not result:
+            raise RuntimeError("Redis ping вернул отрицательный результат.")
     except Exception as exc:
         logger.error("Redis недоступен: {}", exc)
         raise
@@ -27,6 +29,6 @@ async def verify_redis() -> None:
 async def close_redis() -> None:
     """Закрывает подключение к Redis."""
     try:
-        await redis_client.aclose()
+        await redis_client.close()
     except Exception as exc:
         logger.warning("Ошибка закрытия Redis: {}", exc)

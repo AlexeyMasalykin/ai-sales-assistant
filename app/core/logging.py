@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import sys
 
+from types import FrameType
+
 from loguru import logger
 
 from app.core.settings import settings
@@ -19,7 +21,8 @@ class InterceptHandler(logging.Handler):
             level = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
-        frame, depth = logging.currentframe(), 2
+        frame: FrameType | None = logging.currentframe()
+        depth = 2
         while frame and frame.f_code.co_filename == logging.__file__:
             frame = frame.f_back
             depth += 1
