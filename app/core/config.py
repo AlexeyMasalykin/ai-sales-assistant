@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     AVITO_TOKEN_TTL: int = 86400
     AVITO_TOKEN_REFRESH_BEFORE: int = 3600
     
+    # Avito Sync
+    AVITO_SYNC_INTERVAL_MINUTES: int = 60
+    AVITO_SYNC_ENABLED: bool = True
+    AVITO_CACHE_TTL_SECONDS: int = 3600
+    
     # Database
     SUPABASE_URL: Optional[str] = None
     SUPABASE_KEY: Optional[str] = None

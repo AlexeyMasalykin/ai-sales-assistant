@@ -39,7 +39,7 @@ class AvitoMessageHandlers:
                 "Опишите вашу ситуацию, и я подготовлю расчёт!"
             )
 
-        if any(word in text_lower for word in ("контакт", "связь", "телефон", "email", "telegram")):
+        if any(word in text_lower for word in ("контакт", "связь", "связаться", "телефон", "email", "telegram")):
             return (
                 "📞 С нами можно связаться так:\n\n"
                 "Telegram: @your_bot\n"

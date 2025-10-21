@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     avito_client_id: str
     avito_client_secret: SecretStr
     avito_user_id: str
+    avito_api_base_url: str = "https://api.avito.ru"
+    avito_token_ttl: int = 86_400
+    avito_token_refresh_before: int = 3_600
+    avito_auto_reply_enabled: bool = True
+    avito_max_queue_size: int = 1_000
+    avito_processing_workers: int = 3
+    avito_response_delay_seconds: int = 2
+    avito_cache_ttl_seconds: int = 3_600
 
     # Telegram
     telegram_bot_token: SecretStr
