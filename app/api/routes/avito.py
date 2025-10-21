@@ -2,59 +2,41 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from loguru import logger
 
 from app.core.dependencies import get_current_user
-from app.models.avito import (
-    AvitoWebhookPayload,
-    WebhookRegistrationRequest,
-    WebhookStatusResponse,
-)
+from app.models.avito import WebhookRegistrationRequest, WebhookStatusResponse
 from app.services.avito.exceptions import AvitoAPIError, AvitoRateLimitError
-from app.services.avito.webhook import AvitoWebhookHandler
+from app.services.avito.webhook import webhook_handler
 
 
 router = APIRouter(tags=["avito"])
-_handler = AvitoWebhookHandler()
-
-
-async def _process_webhook_async(data: dict[str, Any]) -> None:
-    """Фоновая обработка события Avito webhook."""
-    try:
-        await _handler.process_message(data)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Ошибка обработки webhook Avito: {}", exc)
 
 
 @router.post("/webhooks/avito/messages", status_code=status.HTTP_200_OK)
-async def receive_avito_message(
-    payload: AvitoWebhookPayload,
-    x_signature: str | None = Header(default=None, alias="X-Signature"),
-) -> dict[str, str]:
-    """Принимает входящие сообщения от Avito и добавляет их в очередь.
+async def receive_avito_webhook(request: Request) -> dict[str, str]:
+    """Принимает webhook от Avito и ставит в очередь на обработку."""
+    try:
+        payload: dict[str, Any] = await request.json()
+    except ValueError as exc:
+        logger.error("Avito webhook: некорректный JSON: {}", exc)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
 
-    Args:
-        payload: Данные webhook, переданные Avito.
-        x_signature: Подпись запроса (если предоставляется Avito).
+    event_type = payload.get("event_type", "unknown")
+    logger.info("Получен webhook от Avito: %s", event_type)
+    logger.debug("Avito webhook payload: {}", payload)
 
-    Returns:
-        Подтверждение приёма сообщения.
-    """
-    payload_dict = payload.model_dump(by_alias=True, exclude_none=True)
-    logger.debug("Получен webhook Avito: {}", payload_dict)
-
-    is_valid = await _handler.validate_signature(payload_dict, x_signature)
+    signature = request.headers.get("X-Avito-Signature")
+    is_valid = await webhook_handler.validate_signature(payload, signature)
     if not is_valid:
-        logger.warning("Webhook Avito отклонён из-за недействительной подписи.")
+        logger.warning("Webhook Avito отклонён: подпись недействительна.")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid signature")
 
-    logger.info("Получено событие Avito типа {}", payload.event_type)
-    asyncio.create_task(_process_webhook_async(payload_dict))
-    return {"status": "accepted"}
+    await webhook_handler.add_to_queue(payload)
+    return {"status": "ok"}
 
 
 @router.post(
@@ -67,7 +49,7 @@ async def register_avito_webhook(
 ) -> dict[str, Any]:
     """Регистрирует URL webhook в Avito Messenger."""
     try:
-        result = await _handler.register_webhook(request.webhook_url)
+        result = await webhook_handler.register_webhook(request.webhook_url)
     except AvitoRateLimitError as exc:
         logger.warning("Превышен лимит Avito при регистрации webhook: {}", exc.retry_after)
         raise HTTPException(
@@ -98,7 +80,7 @@ async def get_avito_webhook_status(
 ) -> WebhookStatusResponse:
     """Возвращает статус текущей подписки Avito webhook."""
     try:
-        result = await _handler.get_webhook_status()
+        result = await webhook_handler.get_webhook_status()
     except AvitoAPIError as exc:
         logger.error("Не удалось получить статус Avito webhook: {}", exc)
         raise HTTPException(
@@ -135,7 +117,7 @@ async def unregister_avito_webhook(
 ) -> dict[str, Any]:
     """Удаляет активную подписку Avito webhook."""
     try:
-        result = await _handler.unregister_webhook()
+        result = await webhook_handler.unregister_webhook()
     except AvitoAPIError as exc:
         logger.error("Ошибка Avito при удалении webhook: {}", exc)
         raise HTTPException(

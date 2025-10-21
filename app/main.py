@@ -24,6 +24,7 @@ from app.core.logging import configure_logging
 from app.core.observability import configure_sentry
 from app.core.rate_limiter import RateLimitMiddleware
 from app.core.settings import settings
+from app.services.avito.webhook import webhook_handler
 
 
 UNPROTECTED_PATHS = {
@@ -152,9 +153,11 @@ async def bootstrap_runtime() -> None:
     await apply_migrations()
     await verify_database()
     await verify_redis()
+    await webhook_handler.start_processing()
 
 
 async def shutdown_runtime() -> None:
     """Закрывает соединения при остановке приложения."""
+    await webhook_handler.stop_processing()
     await close_redis()
     await close_engine()
