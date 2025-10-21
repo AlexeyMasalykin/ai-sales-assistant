@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     )
 
     # Avito API (приоритет для текущей фазы)
-    AVITO_CLIENT_ID: str
-    AVITO_CLIENT_SECRET: str
-    AVITO_USER_ID: str
+    AVITO_CLIENT_ID: str = "test_client_id"
+    AVITO_CLIENT_SECRET: str = "test_client_secret"
+    AVITO_USER_ID: str = "test_user_id"
     AVITO_API_BASE_URL: str = "https://api.avito.ru"
     AVITO_TOKEN_TTL: int = 86400
     AVITO_TOKEN_REFRESH_BEFORE: int = 3600
