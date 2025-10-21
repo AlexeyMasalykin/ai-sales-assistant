@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.config import load_environment
@@ -14,7 +14,9 @@ load_environment()
 class Settings(BaseSettings):
     """Глобальные настройки приложения."""
 
-    model_config = SettingsConfigDict(env_file=None, case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=False, extra="ignore"
+    )
 
     # Supabase / PostgreSQL
     supabase_url: str
@@ -34,6 +36,14 @@ class Settings(BaseSettings):
     avito_client_id: str
     avito_client_secret: SecretStr
     avito_user_id: str
+    avito_api_base_url: str = "https://api.avito.ru"
+    avito_token_ttl: int = 86_400
+    avito_token_refresh_before: int = 3_600
+    avito_auto_reply_enabled: bool = True
+    avito_max_queue_size: int = 1_000
+    avito_processing_workers: int = 3
+    avito_response_delay_seconds: int = 2
+    avito_cache_ttl_seconds: int = 3_600
 
     # Telegram
     telegram_bot_token: SecretStr
@@ -62,11 +72,26 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     sentry_dsn: str | None = None
 
+    # CORS
+    allowed_origins: list[str] = Field(default_factory=lambda: ["*"])
+
     # Прочие настройки
     documents_path: str = "/var/data/documents"
     rate_limit_per_minute: int = 60
+    rate_limit_window_seconds: int = 60
     session_ttl_days: int = 30
     max_concurrent_users: int = 100
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def split_origins(cls, value: object) -> list[str]:
+        """Преобразует строку в список источников."""
+        if isinstance(value, str):
+            items = [item.strip() for item in value.split(",")]
+            return [item for item in items if item]
+        if isinstance(value, list):
+            return value
+        return ["*"]
 
 
 settings = Settings()  # type: ignore[call-arg]
