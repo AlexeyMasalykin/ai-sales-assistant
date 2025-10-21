@@ -19,13 +19,13 @@ class Settings(BaseSettings):
     )
 
     # Supabase / PostgreSQL
-    supabase_url: str
-    supabase_key: SecretStr
-    supabase_service_key: SecretStr
-    database_url: str
+    supabase_url: str = "postgresql://test"
+    supabase_key: SecretStr = SecretStr("test_key")
+    supabase_service_key: SecretStr = SecretStr("test_service_key")
+    database_url: str = "postgresql://test"
 
     # Redis
-    upstash_redis_url: str
+    upstash_redis_url: str = "redis://localhost:6379"
 
     # LLM
     llm_provider: Literal["openai", "anthropic", "openrouter"] = "openai"
@@ -48,22 +48,22 @@ class Settings(BaseSettings):
     avito_sync_enabled: bool = True
 
     # Telegram
-    telegram_bot_token: SecretStr
-    telegram_webhook_url: str
+    telegram_bot_token: SecretStr = SecretStr("test")
+    telegram_webhook_url: str = "https://test"
 
     # amoCRM
-    amocrm_domain: str
-    amocrm_access_token: SecretStr
+    amocrm_domain: str = "test"
+    amocrm_access_token: SecretStr = SecretStr("test")
 
     # Google Calendar
-    google_calendar_credentials: str
+    google_calendar_credentials: str = "{}"
 
     # ЮKassa
-    yookassa_shop_id: str
-    yookassa_secret_key: SecretStr
+    yookassa_shop_id: str = "test"
+    yookassa_secret_key: SecretStr = SecretStr("test")
 
     # Безопасность и логирование
-    jwt_secret_key: SecretStr
+    jwt_secret_key: SecretStr = SecretStr("dev-secret-key")
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 1440
     environment: Literal[
