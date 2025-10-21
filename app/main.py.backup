@@ -50,6 +50,33 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         await shutdown_runtime()
 
 
+def create_application() -> FastAPI:
+    """Создаёт и настраивает экземпляр FastAPI."""
+    app = FastAPI(
+        title="Интеллектуальный ассистент продаж ИИ-услуг",
+        version=__version__,
+        description="Сервис автоматизации продаж ИИ-услуг.",
+        lifespan=lifespan,
+    )
+
+    # # setup_middlewares(app)
+    # register_exception_handlers(app)
+    register_routers(app)
+
+    @app.get("/", tags=["health"])
+    async def root() -> dict[str, str]:
+        """Возвращает статус сервиса."""
+        return {
+            "status": "ok",
+            "message": "Ассистент продаж готов к работе.",
+        }
+
+    return app
+
+
+app = create_application()
+
+
 def setup_middlewares(app: FastAPI) -> None:
     """Регистрирует middleware для приложения."""
     app.add_middleware(
@@ -122,33 +149,6 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=500,
             content={"detail": "Внутренняя ошибка сервера."},
         )
-
-
-def create_application() -> FastAPI:
-    """Создаёт и настраивает экземпляр FastAPI."""
-    app = FastAPI(
-        title="Интеллектуальный ассистент продаж ИИ-услуг",
-        version=__version__,
-        description="Сервис автоматизации продаж ИИ-услуг.",
-        lifespan=lifespan,
-    )
-
-    # # setup_middlewares(app)
-    # register_exception_handlers(app)
-    register_routers(app)
-
-    @app.get("/", tags=["health"])
-    async def root() -> dict[str, str]:
-        """Возвращает статус сервиса."""
-        return {
-            "status": "ok",
-            "message": "Ассистент продаж готов к работе.",
-        }
-
-    return app
-
-
-app = create_application()
 
 
 async def bootstrap_runtime() -> None:
