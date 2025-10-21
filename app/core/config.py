@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
 
 # Создаём глобальный экземпляр настроек
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]
 
 
 def load_environment(env_file: Optional[str] = None) -> None:

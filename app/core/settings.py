@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     avito_processing_workers: int = 3
     avito_response_delay_seconds: int = 2
     avito_cache_ttl_seconds: int = 3_600
+    avito_sync_interval_minutes: int = 60
+    avito_sync_enabled: bool = True
 
     # Telegram
     telegram_bot_token: SecretStr
