@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     supabase_url: str = "postgresql://test"
     supabase_key: SecretStr = SecretStr("test_key")
     supabase_service_key: SecretStr = SecretStr("test_service_key")
-    database_url: str = "postgresql://test"
+    database_url: str = "postgresql+asyncpg://test/test"
 
     # Redis
     upstash_redis_url: str = "redis://localhost:6379"
