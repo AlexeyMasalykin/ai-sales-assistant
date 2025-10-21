@@ -8,8 +8,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from loguru import logger
 
 from app.core.dependencies import get_current_user
-from app.models.avito import WebhookRegistrationRequest, WebhookStatusResponse
+from app.core.settings import settings
+from app.models.avito import (
+    AvitoSyncOptions,
+    AvitoVASRequest,
+    WebhookRegistrationRequest,
+    WebhookStatusResponse,
+)
 from app.services.avito.exceptions import AvitoAPIError, AvitoRateLimitError
+from app.services.avito.sync import sync_manager
 from app.services.avito.webhook import webhook_handler
 
 
@@ -130,3 +137,94 @@ async def unregister_avito_webhook(
         getattr(current_user, "sub", "unknown"),
     )
     return result
+
+
+@router.get(
+    "/avito/items",
+    dependencies=[Depends(get_current_user)],
+)
+async def get_user_items() -> dict[str, Any]:
+    """Возвращает список объявлений пользователя Avito."""
+    try:
+        items = await sync_manager.client.get_items()
+        return {"items": items, "total": len(items)}
+    except AvitoAPIError as exc:
+        logger.error("Ошибка получения объявлений Avito: {}", exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Неожиданная ошибка получения объявлений Avito: {}", exc)
+        raise HTTPException(status_code=500, detail="Не удалось получить объявления.") from exc
+
+
+@router.get(
+    "/avito/items/{item_id}/stats",
+    dependencies=[Depends(get_current_user)],
+)
+async def get_item_statistics(item_id: str) -> dict[str, Any]:
+    """Возвращает статистику конкретного объявления Avito."""
+    try:
+        return await sync_manager.get_item_statistics(item_id)
+    except AvitoAPIError as exc:
+        logger.error("Ошибка получения статистики Avito для %s: %s", item_id, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Неожиданная ошибка статистики Avito %s: %s", item_id, exc)
+        raise HTTPException(status_code=500, detail="Не удалось получить статистику.") from exc
+
+
+@router.post(
+    "/avito/items/{item_id}/vas",
+    dependencies=[Depends(get_current_user)],
+)
+async def apply_vas(item_id: str, vas_request: AvitoVASRequest) -> dict[str, Any]:
+    """Применяет VAS-услугу к указанному объявлению."""
+    try:
+        return await sync_manager.apply_vas_service(item_id, vas_request.service_code)
+    except AvitoAPIError as exc:
+        logger.error("Ошибка применения VAS к %s: %s", item_id, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Неожиданная ошибка применения VAS к %s: %s", item_id, exc)
+        raise HTTPException(status_code=500, detail="Не удалось применить VAS услугу.") from exc
+
+
+@router.post(
+    "/avito/sync/start",
+    dependencies=[Depends(get_current_user)],
+)
+async def start_sync(options: AvitoSyncOptions | None = None) -> dict[str, Any]:
+    """Запускает автоматическую синхронизацию объявлений Avito."""
+    try:
+        interval = options.interval_minutes if options else settings.avito_sync_interval_minutes
+        await sync_manager.start_sync(interval_minutes=interval)
+        return {"status": "started", "interval_minutes": interval}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Ошибка запуска синхронизации Avito: {}", exc)
+        raise HTTPException(status_code=500, detail="Не удалось запустить синхронизацию.") from exc
+
+
+@router.post(
+    "/avito/sync/stop",
+    dependencies=[Depends(get_current_user)],
+)
+async def stop_sync() -> dict[str, str]:
+    """Останавливает автоматическую синхронизацию Avito."""
+    try:
+        await sync_manager.stop_sync()
+        return {"status": "stopped"}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Ошибка остановки синхронизации Avito: {}", exc)
+        raise HTTPException(status_code=500, detail="Не удалось остановить синхронизацию.") from exc
+
+
+@router.post(
+    "/avito/sync/now",
+    dependencies=[Depends(get_current_user)],
+)
+async def sync_now() -> dict[str, Any]:
+    """Выполняет немедленную синхронизацию объявлений Avito."""
+    try:
+        return await sync_manager.sync_all_items()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Ошибка мгновенной синхронизации Avito: {}", exc)
+        raise HTTPException(status_code=500, detail="Не удалось выполнить синхронизацию.") from exc

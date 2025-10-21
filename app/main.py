@@ -24,6 +24,7 @@ from app.core.logging import configure_logging
 from app.core.observability import configure_sentry
 from app.core.rate_limiter import RateLimitMiddleware
 from app.core.settings import settings
+from app.services.avito.sync import sync_manager
 from app.services.avito.webhook import webhook_handler
 
 
@@ -154,10 +155,13 @@ async def bootstrap_runtime() -> None:
     await verify_database()
     await verify_redis()
     await webhook_handler.start_processing()
+    if settings.avito_sync_enabled:
+        await sync_manager.start_sync()
 
 
 async def shutdown_runtime() -> None:
     """Закрывает соединения при остановке приложения."""
     await webhook_handler.stop_processing()
+    await sync_manager.stop_sync()
     await close_redis()
     await close_engine()

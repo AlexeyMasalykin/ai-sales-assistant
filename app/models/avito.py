@@ -62,3 +62,23 @@ class WebhookStatusResponse(BaseModel):
         default=None,
         description="Сырые данные ответа Avito для отладки.",
     )
+
+
+class AvitoVASRequest(BaseModel):
+    """Запрос на применение VAS-услуги."""
+
+    service_code: str = Field(
+        ...,
+        description="Код услуги Avito (например, highlight).",
+    )
+
+
+class AvitoSyncOptions(BaseModel):
+    """Параметры запуска синхронизации."""
+
+    interval_minutes: int = Field(
+        default=60,
+        ge=1,
+        le=24 * 60,
+        description="Интервал в минутах между синхронизациями.",
+    )
