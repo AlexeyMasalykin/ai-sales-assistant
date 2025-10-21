@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app import __version__
-from app.api.routes.health import router as health_router
+from app.api import register_routes
 from app.core.cache import close_redis, verify_redis
 from app.core.config import load_environment
 from app.core.database import (
@@ -33,6 +33,7 @@ UNPROTECTED_PATHS = {
     "/docs",
     "/redoc",
     "/openapi.json",
+    "/api/v1/webhooks/avito/messages",
 }
 
 
@@ -79,11 +80,6 @@ def setup_middlewares(app: FastAPI) -> None:
                 content={"detail": exc.detail},
             )
         return await call_next(request)
-
-
-def register_routers(app: FastAPI) -> None:
-    """Подключает все маршруты приложения."""
-    app.include_router(health_router)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -133,9 +129,9 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # # setup_middlewares(app)
-    # register_exception_handlers(app)
-    register_routers(app)
+    setup_middlewares(app)
+    register_exception_handlers(app)
+    register_routes(app)
 
     @app.get("/", tags=["health"])
     async def root() -> dict[str, str]:

@@ -118,6 +118,36 @@ class AvitoAPIClient:
             f"/core/v1/items/{item_id}/stats",
         )
 
+    async def register_webhook(self, webhook_url: str) -> dict[str, Any]:
+        """Регистрирует webhook URL в Avito Messenger.
+
+        Args:
+            webhook_url: Публичный HTTPS URL для приёма событий.
+
+        Returns:
+            Ответ Avito API о регистрации.
+        """
+        payload = {"url": webhook_url}
+        return await self._request(
+            "POST",
+            "/messenger/v3/webhook",
+            json=payload,
+        )
+
+    async def get_webhook_status(self) -> dict[str, Any]:
+        """Возвращает информацию о текущих подписках webhook."""
+        return await self._request(
+            "GET",
+            "/messenger/v1/subscriptions",
+        )
+
+    async def unregister_webhook(self) -> dict[str, Any]:
+        """Удаляет текущую подписку webhook."""
+        return await self._request(
+            "DELETE",
+            "/messenger/v3/webhook",
+        )
+
     async def _request(
         self,
         method: Literal["GET", "POST", "DELETE", "PATCH", "PUT"],
