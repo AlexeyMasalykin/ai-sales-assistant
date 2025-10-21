@@ -17,3 +17,4 @@ sqlalchemy[asyncio]>=2.0.25
 uvicorn[standard]>=0.29.0
 slowapi>=0.1.9
 aioredis>=2.0.0
+psycopg2-binary
