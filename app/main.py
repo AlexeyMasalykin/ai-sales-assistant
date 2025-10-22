@@ -28,6 +28,7 @@ from app.core.settings import settings
 from app.services.avito.sync import sync_manager
 from app.services.avito.webhook import webhook_handler
 from app.services.telegram.bot import telegram_bot
+from app.services.rag.loader import document_loader
 
 
 UNPROTECTED_PATHS = {
@@ -165,6 +166,8 @@ async def bootstrap_runtime() -> None:
     if settings.avito_sync_enabled:
         await sync_manager.start_sync(interval_minutes=settings.avito_sync_interval_minutes)
     await telegram_bot.start()
+    # При необходимости загрузить документы базы знаний:
+    # await document_loader.load_all_documents()
 
 
 async def shutdown_runtime() -> None:

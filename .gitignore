@@ -42,3 +42,7 @@ Thumbs.db
 
 # Test files
 test_*.py
+
+# Documents and knowledge base
+documents/
+.env.backup
