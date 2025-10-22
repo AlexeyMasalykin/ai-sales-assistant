@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from loguru import logger
 
+from app.services.rag.answer import answer_generator
+
 
 class TelegramHandlers:
     """Командные обработчики Telegram бота."""
@@ -97,18 +99,11 @@ class TelegramHandlers:
         text: str,
         user_name: str,
     ) -> str:
-        """Обрабатывает произвольные текстовые сообщения."""
+        """Обрабатывает текстовые сообщения с помощью RAG."""
         logger.info(
             "Telegram: сообщение от %s (chat_id=%s): %s",
             user_name,
             chat_id,
             text[:50],
         )
-        return (
-            "Спасибо за сообщение!\n\n"
-            f'Я получил ваш запрос: "{text[:100]}..."\n\n'
-            "В ближайшее время наш специалист свяжется с вами.\n\n"
-            "А пока можете посмотреть:\n"
-            "/services — наши услуги\n"
-            "/price — стоимость"
-        )
+        return await answer_generator.generate_answer(text, user_name)
