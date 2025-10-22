@@ -27,6 +27,7 @@ from app.core.rate_limiter import RateLimitMiddleware
 from app.core.settings import settings
 from app.services.avito.sync import sync_manager
 from app.services.avito.webhook import webhook_handler
+from app.services.telegram.bot import telegram_bot
 
 
 UNPROTECTED_PATHS = {
@@ -37,6 +38,7 @@ UNPROTECTED_PATHS = {
     "/redoc",
     "/openapi.json",
     "/api/v1/webhooks/avito/messages",
+    "/api/v1/webhooks/telegram",
 }
 
 
@@ -161,12 +163,14 @@ async def bootstrap_runtime() -> None:
     await verify_redis()
     await webhook_handler.start_processing()
     if settings.avito_sync_enabled:
-        await sync_manager.start_sync()
+        await sync_manager.start_sync(interval_minutes=settings.avito_sync_interval_minutes)
+    await telegram_bot.start()
 
 
 async def shutdown_runtime() -> None:
     """Закрывает соединения при остановке приложения."""
     await webhook_handler.stop_processing()
     await sync_manager.stop_sync()
+    await telegram_bot.stop()
     await close_redis()
     await close_engine()

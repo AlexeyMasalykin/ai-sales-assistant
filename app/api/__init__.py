@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.api.routes.avito import router as avito_router
 from app.api.routes.health import router as health_router
+from app.api.routes.telegram import router as telegram_router
 
 
 def register_routes(application: FastAPI) -> None:
@@ -13,5 +14,9 @@ def register_routes(application: FastAPI) -> None:
     application.include_router(health_router)
     application.include_router(
         avito_router,
+        prefix="/api/v1",
+    )
+    application.include_router(
+        telegram_router,
         prefix="/api/v1",
     )
