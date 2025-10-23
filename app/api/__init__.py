@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.api.routes.avito import router as avito_router
+from app.api.routes.chat import router as chat_router
 from app.api.routes.health import router as health_router
 from app.api.routes.telegram import router as telegram_router
 
@@ -18,5 +19,9 @@ def register_routes(application: FastAPI) -> None:
     )
     application.include_router(
         telegram_router,
+        prefix="/api/v1",
+    )
+    application.include_router(
+        chat_router,
         prefix="/api/v1",
     )

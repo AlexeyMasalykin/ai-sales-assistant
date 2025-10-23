@@ -42,6 +42,27 @@ UNPROTECTED_PATHS = {
     "/api/v1/webhooks/telegram",
 }
 
+# Паттерны для веб-чата (проверяются отдельно)
+CHAT_PATH_PATTERNS = [
+    "/api/v1/chat/sessions",
+    "/api/v1/chat/messages",
+    "/api/v1/chat/ws/",
+]
+
+# Паттерны для веб-чата (проверяются отдельно)
+CHAT_PATH_PATTERNS = [
+    "/api/v1/chat/sessions",
+    "/api/v1/chat/messages",
+    "/api/v1/chat/ws/",
+]
+
+# Паттерны для веб-чата (проверяются отдельно)
+CHAT_PATH_PATTERNS = [
+    "/api/v1/chat/sessions",
+    "/api/v1/chat/messages",
+    "/api/v1/chat/ws/",
+]
+
 
 load_environment()
 
@@ -62,7 +83,7 @@ def setup_middlewares(app: FastAPI) -> None:
     """Регистрирует middleware для приложения."""
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins,
+        allow_origins=settings.allowed_origins,  # В production указать конкретные домены
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -80,7 +101,9 @@ def setup_middlewares(app: FastAPI) -> None:
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         """Проверяет JWT для защищённых эндпоинтов."""
-        if request.url.path in UNPROTECTED_PATHS:
+        if request.url.path in UNPROTECTED_PATHS or any(
+            request.url.path.startswith(pattern) for pattern in CHAT_PATH_PATTERNS
+        ):
             return await call_next(request)
         try:
             await authorize_request(request)
@@ -164,7 +187,9 @@ async def bootstrap_runtime() -> None:
     await verify_redis()
     await webhook_handler.start_processing()
     if settings.avito_sync_enabled:
-        await sync_manager.start_sync(interval_minutes=settings.avito_sync_interval_minutes)
+        await sync_manager.start_sync(
+            interval_minutes=settings.avito_sync_interval_minutes
+        )
     await telegram_bot.start()
     # При необходимости загрузить документы базы знаний:
     # await document_loader.load_all_documents()

@@ -1,63 +1,74 @@
-"""Общие фикстуры для интеграционных тестов Avito."""
+"""Pytest configuration."""
 
-from __future__ import annotations
+import sys
+from pathlib import Path
 
-from typing import Generator
-from unittest.mock import AsyncMock
+# Добавляем корневую папку в PYTHONPATH
+root_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(root_dir))
 
 import pytest
+from unittest.mock import AsyncMock
 
+from app.core.database import close_engine
 
-@pytest.fixture
-def mock_redis() -> AsyncMock:
-    """Возвращает замоканный Redis клиент."""
-    redis = AsyncMock()
-    redis.get = AsyncMock(return_value=None)
-    redis.set = AsyncMock(return_value=True)
-    redis.setex = AsyncMock(return_value=True)
-    redis.ttl = AsyncMock(return_value=3_600)
-    redis.delete = AsyncMock(return_value=True)
-    redis.expire = AsyncMock(return_value=True)
-    redis.incr = AsyncMock(return_value=1)
-    redis.ping = AsyncMock(return_value=True)
-    redis.aclose = AsyncMock(return_value=True)
-    return redis
+# Флаг, указывающий, загружены ли документы в БД
+_documents_loaded = False
 
 
 @pytest.fixture(autouse=True)
-def patch_redis(
-    monkeypatch: pytest.MonkeyPatch,
-    mock_redis: AsyncMock,
-) -> Generator[AsyncMock, None, None]:
-    """Патчит Redis клиент во всех релевантных модулях."""
-    monkeypatch.setattr("app.core.cache.redis_client", mock_redis)
-    monkeypatch.setattr("app.services.avito.auth.redis_client", mock_redis)
-    monkeypatch.setattr("app.services.avito.sync.redis_client", mock_redis)
-    yield mock_redis
+async def _dispose_sqlalchemy_engine_after_test():
+    """Автоматически сбрасывает пул соединений SQLAlchemy после каждого теста.
+
+    Это предотвращает переиспользование соединений между разными event loop
+    (pytest-asyncio создаёт новый loop на каждый тест при scope=function),
+    что устраняет ошибку asyncpg: 'Future attached to a different loop'.
+    """
+    yield
+    try:
+        await close_engine()
+    except Exception:
+        # В тестах игнорируем ошибки закрытия, чтобы не фейлить сьют
+        pass
 
 
-@pytest.fixture
-def mock_avito_api() -> AsyncMock:
-    """Возвращает замоканный Avito API клиент."""
-    api = AsyncMock()
-    api.send_message = AsyncMock(return_value={"status": "sent"})
-    api.get_items = AsyncMock(return_value=[])
-    api.get_item_stats = AsyncMock(return_value={"views": 0, "contacts": 0})
-    return api
+@pytest.fixture()
+async def mock_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+    """Асинхронный мок Redis-клиента, подменяющий app.core.cache.redis_client."""
+    mock = AsyncMock()
+    # Часто используемые методы: get/set/setex/ttl/incr/expire/ping
+    mock.get = AsyncMock(return_value=None)
+    mock.set = AsyncMock(return_value=True)
+    mock.setex = AsyncMock(return_value=True)
+    mock.ttl = AsyncMock(return_value=0)
+    mock.incr = AsyncMock(return_value=1)
+    mock.expire = AsyncMock(return_value=True)
+    mock.ping = AsyncMock(return_value=True)
+
+    monkeypatch.setattr("app.core.cache.redis_client", mock)
+    return mock
 
 
-@pytest.fixture
-def sample_webhook_payload() -> dict[str, object]:
-    """Пример payload от Avito webhook."""
-    return {
-        "event_type": "message.new",
-        "payload": {
-            "chat_id": "test_chat",
-            "message": {
-                "id": "msg_id",
-                "text": "Test message",
-                "author_id": "user_id",
-                "created_at": "2025-10-21T12:00:00Z",
-            },
-        },
-    }
+@pytest.fixture(scope="function")
+async def load_knowledge_base():
+    """Загружает документы базы знаний перед RAG тестами."""
+    global _documents_loaded
+
+    # Загружаем документы только один раз за весь прогон тестов
+    if not _documents_loaded:
+        try:
+            from app.services.rag.loader import document_loader
+            from loguru import logger
+
+            logger.info("Загрузка документов базы знаний для тестов...")
+            stats = await document_loader.load_all_documents()
+            logger.info(f"Загружено документов: {stats}")
+            _documents_loaded = True
+        except Exception as e:
+            from loguru import logger
+
+            logger.error(f"Ошибка загрузки документов: {e}")
+            # Не фейлим тест, если документы не загрузились
+            pass
+
+    yield

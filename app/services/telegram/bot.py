@@ -27,6 +27,7 @@ class TelegramBot:
 
         self.client = httpx.AsyncClient(timeout=30.0)
         await self.set_webhook(f"{self.webhook_url}/api/v1/webhooks/telegram")
+        await self.set_bot_commands()
         logger.info("Telegram Bot запущен.")
 
     async def stop(self) -> None:
@@ -80,6 +81,30 @@ class TelegramBot:
         else:
             logger.error("Telegram вернул ошибку при отправке: %s", result)
         return result
+
+    async def set_bot_commands(self) -> None:
+        """Устанавливает меню команд бота."""
+        if not self.client:
+            return
+
+        commands = [
+            {"command": "start", "description": "🚀 Начать работу"},
+            {"command": "help", "description": "❓ Помощь"},
+            {"command": "services", "description": "📋 Наши услуги"},
+            {"command": "price", "description": "💰 Узнать стоимость"},
+            {"command": "price_list", "description": "📄 Скачать прайс"},
+            {"command": "proposal", "description": "📝 Заказать КП"},
+            {"command": "contact", "description": "📞 Связаться с менеджером"},
+            {"command": "cases", "description": "🏆 Наши кейсы"},
+        ]
+
+        try:
+            response = await self.client.post(f"{self.base_url}/setMyCommands", json={"commands": commands})
+            data = response.json()
+            if data.get("ok"):
+                logger.info("Меню команд установлено")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Ошибка установки меню: %s", exc)
 
 
 # Singleton экземпляр

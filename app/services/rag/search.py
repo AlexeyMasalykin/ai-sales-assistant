@@ -29,20 +29,44 @@ class DocumentSearch:
             # так как параметры не работают с большими векторами в pgvector
             # NOTE: Не используем ORDER BY с той же операцией <=> -
             # это ломает запрос с литеральными строками
+            # Увеличиваем выборку кандидатов, затем переупорядочиваем по ключевым словам
+            candidates_limit = max(50, limit * 50)
             sql_query = f"""
                 SELECT id,
                        title,
                        content,
                        embedding <=> '{embedding_str}'::vector AS distance
                 FROM documents
-                LIMIT {limit * 10}
+                LIMIT {candidates_limit}
             """
 
             result = await session.execute(text(sql_query))
             all_rows = result.fetchall()
 
-            # Сортируем в Python и берем топ-N
-            rows = sorted(all_rows, key=lambda r: r[3])[:limit]
+            # Ре-ранжирование: повышаем приоритет документов с вхождениями терминов запроса
+            query_terms = [t for t in query.lower().split() if len(t) >= 4]
+
+            def keyword_score(title: str, content: str) -> int:
+                title_l = title.lower() if title else ""
+                content_l = content.lower() if content else ""
+                score = 0
+                for term in query_terms:
+                    if term in title_l:
+                        score += 2
+                    if term in content_l:
+                        score += 1
+                return score
+
+            # Сортируем по (минус счёт по ключевым словам, distance)
+            sorted_rows = sorted(
+                all_rows,
+                key=lambda r: (
+                    -keyword_score(r[1], r[2]),
+                    float(r[3]),
+                ),
+            )
+
+            rows = sorted_rows[:limit]
 
         documents: list[dict[str, Any]] = [
             {
