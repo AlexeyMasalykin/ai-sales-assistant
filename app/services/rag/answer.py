@@ -73,7 +73,7 @@ class AnswerGenerator:
             )
 
         answer = response.choices[0].message.content
-        # Гарантируем наличие базового HTML форматирования для Telegram, как требует тест
+        # Гарантируем HTML форматирование для Telegram (требование теста)
         if "<b>" not in answer and "<i>" not in answer:
             answer = f"<b>{answer}</b>"
         logger.info("Ответ сгенерирован (%s символов).", len(answer))

@@ -78,7 +78,8 @@ class PricingResult:
             for service in self.services:
                 service_price = f"{service.service.price:,}".replace(",", " ")
                 lines.append(
-                    f"  • {service.service.name}: {service_price}₽ × {service.quantity}",
+                    f"  • {service.service.name}: "
+                    f"{service_price}₽ × {service.quantity}",
                 )
             services_total = f"{self.services_subtotal:,}".replace(",", " ")
             lines.append(f"Итого за услуги: {services_total}₽")

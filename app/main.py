@@ -83,7 +83,7 @@ def setup_middlewares(app: FastAPI) -> None:
     """Регистрирует middleware для приложения."""
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins,  # В production указать конкретные домены
+        allow_origins=settings.allowed_origins,  # В production - конкретные домены
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
