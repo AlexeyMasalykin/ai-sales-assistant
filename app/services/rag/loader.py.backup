@@ -1,0 +1,86 @@
+"""Загрузчик документов в векторную базу данных."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from loguru import logger
+from sqlalchemy import text
+
+from app.core.database import session_factory
+from app.services.rag.embeddings import embeddings_service
+
+
+class DocumentLoader:
+    """Загружает документы из файловой системы в таблицу documents."""
+
+    def __init__(self) -> None:
+        self.docs_path = Path("documents/knowledge_base")
+
+    async def load_all_documents(self) -> dict[str, int]:
+        """Загружает все markdown документы из каталога."""
+        logger.info("Начало загрузки документов базы знаний.")
+
+        stats: dict[str, int] = {"total": 0, "loaded": 0, "failed": 0}
+
+        if not self.docs_path.exists():
+            logger.error("Каталог %s не найден.", self.docs_path)
+            return stats
+
+        files = list(self.docs_path.glob("*.md"))
+        stats["total"] = len(files)
+        logger.info("Найдено %s документов для загрузки.", stats["total"])
+
+        for file_path in files:
+            try:
+                await self.load_document(file_path)
+                stats["loaded"] += 1
+                logger.info("Загружен документ: %s", file_path.name)
+            except Exception as exc:  # noqa: BLE001
+                stats["failed"] += 1
+                logger.error("Ошибка загрузки %s: %s", file_path.name, exc)
+
+        logger.info(
+            "Загрузка завершена: %s успешно, %s с ошибками.",
+            stats["loaded"],
+            stats["failed"],
+        )
+        return stats
+
+    async def load_document(self, file_path: Path) -> None:
+        """Загружает одиночный документ в базу данных."""
+        content = file_path.read_text(encoding="utf-8")
+        title = file_path.stem.replace("_", " ").title()
+
+        embedding = await embeddings_service.generate_embedding(content)
+
+        async with session_factory() as session:  # type: ignore[misc]
+            query = text(
+                """
+                INSERT INTO documents (title, content, embedding, metadata)
+                VALUES (:title, :content, :embedding, :metadata)
+                ON CONFLICT (title) DO NOTHING
+                """
+            )
+
+            await session.execute(
+                query,
+                {
+                    "title": title,
+                    "content": content,
+                    "embedding": embedding,
+                    "metadata": {"source": str(file_path)},
+                },
+            )
+            await session.commit()
+
+    async def clear_documents(self) -> None:
+        """Очищает таблицу документов."""
+        async with session_factory() as session:  # type: ignore[misc]
+            await session.execute(text("TRUNCATE TABLE documents"))
+            await session.commit()
+            logger.info("Таблица documents очищена.")
+
+
+document_loader = DocumentLoader()
