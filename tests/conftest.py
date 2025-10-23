@@ -44,8 +44,11 @@ async def mock_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock.incr = AsyncMock(return_value=1)
     mock.expire = AsyncMock(return_value=True)
     mock.ping = AsyncMock(return_value=True)
+    mock.rpush = AsyncMock(return_value=0)
+    mock.lrange = AsyncMock(return_value=[])
 
     monkeypatch.setattr("app.core.cache.redis_client", mock)
+    monkeypatch.setattr("app.services.web.chat_session.redis_client", mock)
     return mock
 
 

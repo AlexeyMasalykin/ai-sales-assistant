@@ -1,6 +1,7 @@
 """Тесты Telegram обработчиков команд."""
 
 import pytest
+from unittest.mock import AsyncMock
 
 from app.services.telegram.handlers import TelegramHandlers
 
@@ -91,13 +92,19 @@ async def test_handle_generate_proposal() -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_text_message_with_rag() -> None:
+async def test_handle_text_message_with_rag(mock_redis: AsyncMock, monkeypatch: pytest.MonkeyPatch) -> None:
     """Тест текстового сообщения через RAG"""
+    mock_answer = AsyncMock(return_value="<b>TestUser</b>, мы предлагаем услуги AI.")
+    monkeypatch.setattr(
+        "app.services.rag.answer.answer_generator.generate_answer_with_context",
+        mock_answer,
+    )
+
     response = await TelegramHandlers.handle_text_message(
         12345,
         "Какие у вас услуги?",
         "TestUser",
     )
 
-    assert len(response) > 50
-    assert "TestUser" in response or "услуг" in response.lower()
+    assert response == "<b>TestUser</b>, мы предлагаем услуги AI."
+    mock_answer.assert_awaited_once()

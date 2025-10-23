@@ -191,8 +191,8 @@ async def bootstrap_runtime() -> None:
             interval_minutes=settings.avito_sync_interval_minutes
         )
     await telegram_bot.start()
-    # При необходимости загрузить документы базы знаний:
-    # await document_loader.load_all_documents()
+    # Загружаем документы базы знаний
+    await document_loader.load_all_documents()
 
 
 async def shutdown_runtime() -> None:

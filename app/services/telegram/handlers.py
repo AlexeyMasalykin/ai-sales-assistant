@@ -8,6 +8,7 @@ from loguru import logger
 
 from app.services.documents.generator import document_generator
 from app.services.rag.answer import answer_generator
+from app.services.web.chat_session import session_manager
 
 
 class TelegramHandlers:
@@ -197,6 +198,29 @@ class TelegramHandlers:
 
     @staticmethod
     async def handle_text_message(chat_id: int, text: str, user_name: str) -> str:
-        """Обрабатывает текстовые сообщения с помощью RAG."""
-        logger.info("Telegram: сообщение от %s (chat_id=%s): %s", user_name, chat_id, text[:50])
-        return await answer_generator.generate_answer(text, user_name)
+        """Обрабатывает текстовое сообщение с учётом контекста из Redis."""
+        logger.info(
+            "Telegram: сообщение от %s (chat_id=%s): %s",
+            user_name,
+            chat_id,
+            text[:50],
+        )
+
+        session_id = await session_manager.get_or_create_telegram_session(
+            chat_id,
+            user_name,
+        )
+
+        await session_manager.add_message(session_id, "user", text)
+
+        context = await session_manager.get_context_for_llm(session_id, limit=5)
+
+        answer = await answer_generator.generate_answer_with_context(
+            text,
+            user_name,
+            context,
+        )
+
+        await session_manager.add_message(session_id, "assistant", answer)
+
+        return answer

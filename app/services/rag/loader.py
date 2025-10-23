@@ -72,7 +72,11 @@ class DocumentLoader:
                 """
                 INSERT INTO documents (title, content, embedding, metadata)
                 VALUES (:title, :content, CAST(:embedding AS vector), :metadata)
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (title) DO UPDATE SET
+                    content = EXCLUDED.content,
+                    embedding = EXCLUDED.embedding,
+                    metadata = EXCLUDED.metadata,
+                    updated_at = CURRENT_TIMESTAMP
             """
             )
 

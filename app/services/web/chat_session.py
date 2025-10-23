@@ -1,4 +1,4 @@
-"""Менеджер сессий веб-чата."""
+"""Менеджер сессий диалогов (веб + Telegram)."""
 
 from __future__ import annotations
 
@@ -13,12 +13,13 @@ from app.core.cache import redis_client
 
 
 class ChatSessionManager:
-    """Управляет данными сессий веб-чата в Redis."""
+    """Управляет данными сессий диалогов в Redis для всех каналов."""
 
     def __init__(self) -> None:
         self.session_ttl = 60 * 60 * 24 * 30  # 30 дней
         self.session_prefix = "chat:session:"
         self.messages_prefix = "chat:messages:"
+        self.telegram_prefix = "telegram:chat:"
 
     async def create_session(
         self,
@@ -106,6 +107,57 @@ class ChatSessionManager:
         await redis_client.expire(messages_key, self.session_ttl)
 
         logger.debug("TTL сессии {} продлён", session_id)
+
+    async def get_or_create_telegram_session(
+        self,
+        chat_id: int,
+        user_name: str,
+    ) -> str:
+        """Получает или создаёт сессию для Telegram чата."""
+        session_key = f"{self.telegram_prefix}{chat_id}"
+        session_id = await redis_client.get(session_key)
+
+        if session_id:
+            await self.extend_session(session_id)
+            await redis_client.expire(session_key, self.session_ttl)
+            logger.debug("Продлена Telegram сессия {} для chat_id={}", session_id, chat_id)
+            return session_id
+
+        session_id = await self.create_session(
+            user_name=user_name,
+            metadata={"channel": "telegram", "chat_id": chat_id},
+        )
+
+        await redis_client.setex(
+            session_key,
+            self.session_ttl,
+            session_id,
+        )
+
+        logger.info("Создана Telegram сессия {} для chat_id={}", session_id, chat_id)
+
+        return session_id
+
+    async def get_context_for_llm(self, session_id: str, limit: int = 10) -> list[dict]:
+        """Получает сообщения в формате OpenAI для LLM."""
+        messages = await self.get_messages(session_id, limit)
+
+        context: list[dict] = []
+        for message in messages:
+            context.append(
+                {
+                    "role": message["role"],
+                    "content": message["content"],
+                },
+            )
+
+        logger.debug(
+            "Сформирован контекст для LLM ({} сообщений) по сессии {}",
+            len(context),
+            session_id,
+        )
+
+        return context
 
 
 session_manager = ChatSessionManager()
