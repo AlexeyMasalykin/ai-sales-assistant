@@ -43,7 +43,9 @@ async def telegram_webhook(request: Request) -> dict[str, bool]:
             "/help": lambda: TelegramHandlers.handle_help(chat_id),
             "/services": lambda: TelegramHandlers.handle_services(chat_id),
             "/price": lambda: TelegramHandlers.handle_price(chat_id),
-            "/price_list": lambda: TelegramHandlers.handle_generate_price(chat_id, user_name),
+            "/price_list": lambda: TelegramHandlers.handle_generate_price(
+                chat_id, user_name
+            ),
             "/contact": lambda: TelegramHandlers.handle_contact(chat_id, user_name),
             "/cases": lambda: TelegramHandlers.handle_cases(chat_id),
         }
@@ -53,13 +55,17 @@ async def telegram_webhook(request: Request) -> dict[str, bool]:
             parts = text.split(maxsplit=2)
             company = parts[1] if len(parts) > 1 else ""
             services = parts[2] if len(parts) > 2 else ""
-            response = await TelegramHandlers.handle_generate_proposal(chat_id, user_name, company, services)
+            response = await TelegramHandlers.handle_generate_proposal(
+                chat_id, user_name, company, services
+            )
         elif text in command_handlers:
             response = await command_handlers[text]()
         elif text.startswith("/"):
             response = await TelegramHandlers.handle_unknown_command(chat_id, text)
         else:
-            response = await TelegramHandlers.handle_text_message(chat_id, text, user_name)
+            response = await TelegramHandlers.handle_text_message(
+                chat_id, text, user_name
+            )
 
         await telegram_bot.send_message(chat_id, response)
 

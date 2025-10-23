@@ -73,7 +73,9 @@ async def test_telegram_session_creation(mock_redis: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_telegram_message_with_context(mock_redis: AsyncMock, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_telegram_message_with_context(
+    mock_redis: AsyncMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Проверяет сохранение контекста и генерацию ответа."""
     _setup_in_memory_redis(mock_redis)
 

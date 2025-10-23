@@ -99,7 +99,9 @@ class TelegramBot:
         ]
 
         try:
-            response = await self.client.post(f"{self.base_url}/setMyCommands", json={"commands": commands})
+            response = await self.client.post(
+                f"{self.base_url}/setMyCommands", json={"commands": commands}
+            )
             data = response.json()
             if data.get("ok"):
                 logger.info("Меню команд установлено")

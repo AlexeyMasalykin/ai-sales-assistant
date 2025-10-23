@@ -142,7 +142,10 @@ class DocumentGenerator:
                 messages=[
                     {
                         "role": "system",
-                        "content": "Ты - эксперт по созданию продающих коммерческих предложений.",
+                        "content": (
+                            "Ты - эксперт по созданию продающих "
+                            "коммерческих предложений."
+                        ),
                     },
                     {"role": "user", "content": prompt},
                 ],

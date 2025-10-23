@@ -43,7 +43,8 @@ class DocumentSearch:
             result = await session.execute(text(sql_query))
             all_rows = result.fetchall()
 
-            # Ре-ранжирование: повышаем приоритет документов с вхождениями терминов запроса
+            # Ре-ранжирование: повышаем приоритет документов
+            # с вхождениями терминов запроса
             query_terms = [t for t in query.lower().split() if len(t) >= 4]
 
             def keyword_score(title: str, content: str) -> int:

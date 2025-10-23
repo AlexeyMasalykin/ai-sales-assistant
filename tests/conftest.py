@@ -7,10 +7,11 @@ from pathlib import Path
 root_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(root_dir))
 
-import pytest
-from unittest.mock import AsyncMock
+# После настройки sys.path импортируем остальные модули
+import pytest  # noqa: E402
+from unittest.mock import AsyncMock  # noqa: E402
 
-from app.core.database import close_engine
+from app.core.database import close_engine  # noqa: E402
 
 # Флаг, указывающий, загружены ли документы в БД
 _documents_loaded = False

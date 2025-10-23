@@ -103,13 +103,18 @@ class TelegramHandlers:
         """Обработчик команды /price_list."""
         logger.info("Генерация прайс-листа для %s (chat_id=%s)", user_name, chat_id)
 
-        html = await document_generator.generate_price_list(client_name=user_name, services=None)
+        html = await document_generator.generate_price_list(
+            client_name=user_name, services=None
+        )
 
         text = html.replace("<table>", "\n").replace("</table>", "\n")
         text = text.replace("<tr>", "").replace("</tr>", "\n")
         text = text.replace("<td>", " ").replace("</td>", " | ")
 
-        return f"<b>Персональный прайс-лист</b>\n\n{text[:1000]}\n\n💾 Полную версию вышлю файлом."
+        return (
+            f"<b>Персональный прайс-лист</b>\n\n{text[:1000]}\n\n"
+            f"💾 Полную версию вышлю файлом."
+        )
 
     @staticmethod
     async def handle_generate_proposal(
@@ -159,7 +164,9 @@ class TelegramHandlers:
         logger.info("Запрос кейсов от чата %s", chat_id)
 
         try:
-            from app.services.rag.search import document_search  # noqa: WPS433 (local import for async context)
+            from app.services.rag.search import (
+                document_search,
+            )  # noqa: WPS433 (local import for async context)
 
             docs = await document_search.search("кейсы внедрения проекты", limit=1)
         except Exception as exc:  # noqa: BLE001

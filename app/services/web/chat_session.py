@@ -120,7 +120,9 @@ class ChatSessionManager:
         if session_id:
             await self.extend_session(session_id)
             await redis_client.expire(session_key, self.session_ttl)
-            logger.debug("Продлена Telegram сессия {} для chat_id={}", session_id, chat_id)
+            logger.debug(
+                "Продлена Telegram сессия {} для chat_id={}", session_id, chat_id
+            )
             return session_id
 
         session_id = await self.create_session(

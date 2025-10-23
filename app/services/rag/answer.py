@@ -103,24 +103,23 @@ class AnswerGenerator:
             )
 
         knowledge_context = "\n\n".join(
-            f"Документ: {doc['title']}\n{doc['content'][:500]}"
-            for doc in documents
+            f"Документ: {doc['title']}\n{doc['content'][:500]}" for doc in documents
         )
 
         messages: list[dict[str, str]] = [
             {
                 "role": "system",
-                "content": f"""Ты — AI Sales Assistant компании, специализирующейся на AI-решениях.
-
-Контекст из базы знаний:
-{knowledge_context}
-
-ВАЖНО:
-- Отвечай кратко и по делу
-- Обращайся к клиенту по имени: {user_name}
-- Используй HTML теги: <b>, <i>, <a>
-- Если не знаешь — предложи связаться с менеджером
-- Сохраняй контекст предыдущих сообщений""",
+                "content": (
+                    f"Ты — AI Sales Assistant компании, "
+                    f"специализирующейся на AI-решениях.\n\n"
+                    f"Контекст из базы знаний:\n{knowledge_context}\n\n"
+                    f"ВАЖНО:\n"
+                    f"- Отвечай кратко и по делу\n"
+                    f"- Обращайся к клиенту по имени: {user_name}\n"
+                    f"- Используй HTML теги: <b>, <i>, <a>\n"
+                    f"- Если не знаешь — предложи связаться с менеджером\n"
+                    f"- Сохраняй контекст предыдущих сообщений"
+                ),
             },
         ]
 

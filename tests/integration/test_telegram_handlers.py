@@ -92,7 +92,9 @@ async def test_handle_generate_proposal() -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_text_message_with_rag(mock_redis: AsyncMock, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_handle_text_message_with_rag(
+    mock_redis: AsyncMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Тест текстового сообщения через RAG"""
     mock_answer = AsyncMock(return_value="<b>TestUser</b>, мы предлагаем услуги AI.")
     monkeypatch.setattr(

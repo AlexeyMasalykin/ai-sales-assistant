@@ -123,7 +123,9 @@ class PricingCalculator:
 
     def __init__(self) -> None:
         self._all_tariffs = get_all_tariffs()
-        self._services = {service.service_type: service for service in ADDITIONAL_SERVICES}
+        self._services = {
+            service.service_type: service for service in ADDITIONAL_SERVICES
+        }
         self._packages = PACKAGE_DISCOUNTS
 
     def find_tariff(self, product: ProductType, tariff_name: str) -> TariffPlan | None:
@@ -134,7 +136,9 @@ class PricingCalculator:
                 return tariff
         return None
 
-    def find_tariff_by_users(self, product: ProductType, users_count: int) -> TariffPlan | None:
+    def find_tariff_by_users(
+        self, product: ProductType, users_count: int
+    ) -> TariffPlan | None:
         """Подбирает тариф по количеству пользователей."""
         tariffs = sorted(
             self._all_tariffs.get(product, []),
@@ -174,9 +178,13 @@ class PricingCalculator:
             len(service_list),
         )
 
-        enterprise_selected = any(product.tariff.is_enterprise for product in product_list)
+        enterprise_selected = any(
+            product.tariff.is_enterprise for product in product_list
+        )
         if enterprise_selected:
-            logger.warning("Обнаружен энтерпрайз тариф — требуется индивидуальный расчёт")
+            logger.warning(
+                "Обнаружен энтерпрайз тариф — требуется индивидуальный расчёт"
+            )
 
         products_subtotal = sum(
             product.tariff.price_monthly * product.months
@@ -198,7 +206,9 @@ class PricingCalculator:
         if package_discount:
             package_discount_name = package_discount.name
             package_discount_percent = package_discount.discount_percent
-            package_discount_amount = int(products_subtotal * package_discount_percent / 100)
+            package_discount_amount = int(
+                products_subtotal * package_discount_percent / 100
+            )
             logger.info(
                 "Применена пакетная скидка '%s': %d%% (-%d₽)",
                 package_discount_name,
@@ -259,7 +269,9 @@ class PricingCalculator:
 
         return result
 
-    def _find_package_discount(self, selected_products: set[ProductType]) -> PackageDiscount | None:
+    def _find_package_discount(
+        self, selected_products: set[ProductType]
+    ) -> PackageDiscount | None:
         """Ищет подходящую пакетную скидку."""
         sorted_packages = sorted(
             self._packages,
