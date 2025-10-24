@@ -6,7 +6,6 @@ from typing import Any
 
 from loguru import logger
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import session_factory
 from app.services.rag.embeddings import embeddings_service
