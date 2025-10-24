@@ -47,3 +47,15 @@ test_*.py
 # Documents and knowledge base
 /documents/
 .env.backup
+
+# Генерируемые PDF документы и тестовые файлы
+data/documents/*.pdf
+!data/documents/.gitkeep
+*.pdf
+check_pdf_setup.py
+loguru/
+
+# Отчётные и временные markdown файлы
+INSTALL_PDF.md
+T025_IMPLEMENTATION.md
+WEBHOOK_TEST_RESULTS.md
