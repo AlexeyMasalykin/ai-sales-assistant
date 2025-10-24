@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Dict, List, Literal, Union, cast
 
 import httpx
 from loguru import logger
@@ -17,6 +17,10 @@ from app.services.avito.exceptions import (
     AvitoAuthError,
     AvitoRateLimitError,
 )
+
+JSONDict = Dict[str, Any]
+JSONList = List[Any]
+JSONResponse = Union[JSONDict, JSONList]
 
 
 class AvitoAPIClient:
@@ -49,7 +53,8 @@ class AvitoAPIClient:
             "message": {"text": text},
         }
         endpoint = f"/messenger/v1/accounts/{uid}/chats/{chat_id}/messages"
-        return await self._request("POST", endpoint, json=payload)
+        response = await self._request("POST", endpoint, json=payload)
+        return self._ensure_dict(response)
 
     async def upload_image(self, file_path: str) -> dict[str, Any]:
         """Загружает изображение в Avito Messenger.
@@ -65,11 +70,12 @@ class AvitoAPIClient:
             raise AvitoAPIError(f"Файл не найден: {file_path}")
         with path.open("rb") as file_obj:
             files = {"file": (path.name, file_obj, "image/jpeg")}
-            return await self._request(
+            response = await self._request(
                 "POST",
                 "/messenger/v3/upload_image",
                 files=files,
             )
+        return self._ensure_dict(response)
 
     async def get_chats(
         self, limit: int = 50, user_id: str | None = None
@@ -92,7 +98,7 @@ class AvitoAPIClient:
             endpoint,
             params={"limit": min(limit, 100)},
         )
-        return response.get("chats", [])
+        return self._extract_dict_list(response, "chats")
 
     async def get_chat_messages(
         self, chat_id: str, limit: int = 100, user_id: str | None = None
@@ -116,7 +122,7 @@ class AvitoAPIClient:
             endpoint,
             params={"limit": min(limit, 100)},
         )
-        return response if isinstance(response, list) else response.get("messages", [])
+        return self._extract_dict_list(response, "messages")
 
     async def get_items(self) -> list[dict[str, Any]]:
         """Возвращает список объявлений пользователя.
@@ -125,7 +131,11 @@ class AvitoAPIClient:
             Список объявлений.
         """
         response = await self._request("GET", "/core/v1/items")
-        return response.get("items", [])
+        payload = self._ensure_dict(response)
+        items_raw = payload.get("items", [])
+        if not isinstance(items_raw, list):
+            return []
+        return [item for item in items_raw if isinstance(item, dict)]
 
     async def get_item_stats(self, item_id: str) -> dict[str, Any]:
         """Получает статистику по объявлению.
@@ -136,10 +146,11 @@ class AvitoAPIClient:
         Returns:
             Статистика просмотров и контактов.
         """
-        return await self._request(
+        response = await self._request(
             "GET",
             f"/core/v1/items/{item_id}/stats",
         )
+        return self._ensure_dict(response)
 
     async def register_webhook(self, webhook_url: str) -> dict[str, Any]:
         """Регистрирует webhook URL в Avito Messenger (v3).
@@ -151,18 +162,20 @@ class AvitoAPIClient:
             Ответ Avito API о регистрации.
         """
         payload = {"url": webhook_url}
-        return await self._request(
+        response = await self._request(
             "POST",
             "/messenger/v3/webhook",
             json=payload,
         )
+        return self._ensure_dict(response)
 
     async def get_webhook_status(self) -> dict[str, Any]:
         """Возвращает информацию о текущих подписках webhook (v1)."""
-        return await self._request(
+        response = await self._request(
             "POST",
             "/messenger/v1/subscriptions",
         )
+        return self._ensure_dict(response)
 
     async def unregister_webhook(self, webhook_url: str) -> dict[str, Any]:
         """Удаляет текущую подписку webhook (v1).
@@ -171,18 +184,19 @@ class AvitoAPIClient:
             webhook_url: URL для отписки.
         """
         payload = {"url": webhook_url}
-        return await self._request(
+        response = await self._request(
             "POST",
             "/messenger/v1/webhook/unsubscribe",
             json=payload,
         )
+        return self._ensure_dict(response)
 
     async def _request(
         self,
         method: Literal["GET", "POST", "DELETE", "PATCH", "PUT"],
         endpoint: str,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> JSONResponse:
         """Выполняет HTTP-запрос к Avito с повторными попытками.
 
         Args:
@@ -268,9 +282,30 @@ class AvitoAPIClient:
             if not response.content:
                 return {}
             try:
-                return response.json()
+                return cast(JSONResponse, response.json())
             except ValueError as exc:
                 logger.error("Некорректный JSON в ответе Avito: {}", exc)
                 raise AvitoAPIError("Некорректный формат ответа Avito API.") from exc
 
         raise AvitoAPIError("Превышено число попыток запроса к Avito API.")
+
+    @staticmethod
+    def _ensure_dict(data: JSONResponse) -> JSONDict:
+        if isinstance(data, dict):
+            return data
+        raise AvitoAPIError("Avito API вернул неожиданный формат ответа.")
+
+    @staticmethod
+    def _extract_dict_list(
+        data: JSONResponse,
+        key: str | None = None,
+    ) -> List[JSONDict]:
+        if isinstance(data, list):
+            items = data
+        elif isinstance(data, dict) and key:
+            raw_value = data.get(key, [])
+            items = raw_value if isinstance(raw_value, list) else []
+        else:
+            items = []
+
+        return [item for item in items if isinstance(item, dict)]

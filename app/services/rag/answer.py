@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from loguru import logger
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
+from typing import Dict, List, Optional, Sequence
 
 from app.core.settings import settings
 from app.services.rag.search import document_search
@@ -13,6 +15,7 @@ class AnswerGenerator:
     """Формирует ответы для пользователей с опорой на базу знаний."""
 
     def __init__(self) -> None:
+        self.client: Optional[AsyncOpenAI]
         api_key = settings.openai_api_key
         if api_key:
             self.client = AsyncOpenAI(api_key=api_key.get_secret_value())
@@ -56,12 +59,13 @@ class AnswerGenerator:
 """
 
         try:
+            messages: List[ChatCompletionMessageParam] = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question},
+            ]
             response = await self.client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": question},
-                ],
+                messages=messages,
                 temperature=0.7,
                 max_tokens=500,
             )
@@ -72,10 +76,10 @@ class AnswerGenerator:
                 "Попробуйте переформулировать вопрос."
             )
 
-        answer = response.choices[0].message.content
-        if answer is None:
+        answer_raw = response.choices[0].message.content
+        if answer_raw is None:
             return "Извините, не удалось сгенерировать ответ."
-
+        answer = str(answer_raw)
         # Гарантируем HTML форматирование для Telegram (требование теста)
         if "<b>" not in answer and "<i>" not in answer:
             answer = f"<b>{answer}</b>"
@@ -86,7 +90,7 @@ class AnswerGenerator:
         self,
         question: str,
         user_name: str,
-        context: list[dict] | None = None,
+        context: Sequence[Dict[str, str]] | None = None,
     ) -> str:
         """Формирует ответ, учитывая историю переписки."""
         if not self.client:
@@ -109,7 +113,7 @@ class AnswerGenerator:
             f"Документ: {doc['title']}\n{doc['content'][:500]}" for doc in documents
         )
 
-        messages: list[dict[str, str]] = [
+        messages: List[ChatCompletionMessageParam] = [
             {
                 "role": "system",
                 "content": (
@@ -127,7 +131,10 @@ class AnswerGenerator:
         ]
 
         if context:
-            messages.extend(context)
+            for item in context:
+                role = item.get("role", "user")
+                content = item.get("content", "")
+                messages.append({"role": role, "content": content})
 
         messages.append(
             {
@@ -150,11 +157,10 @@ class AnswerGenerator:
                 "Попробуйте переформулировать вопрос."
             )
 
-        answer = response.choices[0].message.content
-        if answer is None:
+        answer_raw = response.choices[0].message.content
+        if answer_raw is None:
             return "Извините, не удалось сгенерировать ответ."
-
-        answer = answer.strip()
+        answer = str(answer_raw).strip()
 
         if "<b>" not in answer and "<i>" not in answer:
             answer = f"<b>{user_name}</b>, {answer}"

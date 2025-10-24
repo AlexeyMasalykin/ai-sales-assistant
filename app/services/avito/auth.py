@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import httpx
 from loguru import logger
+from typing import Any, Dict, cast
 
 from app.core.cache import redis_client
 from app.core.settings import settings
@@ -122,18 +123,20 @@ class AvitoAuthManager:
             )
 
         try:
-            data = response.json()
+            data = cast(Dict[str, Any], response.json())
         except ValueError as exc:
             logger.error("Неверный JSON в ответе Avito при получении токена: {}", exc)
             raise AvitoAuthError("Avito вернул некорректный JSON.") from exc
-        token = data.get("access_token")
+        token_raw = data.get("access_token")
+        if not isinstance(token_raw, str) or not token_raw:
+            logger.error("Ответ Avito не содержит access_token: {}", data)
+            raise AvitoAuthError("Отсутствует access_token в ответе Avito.")
+
+        token = token_raw
         try:
             expires_in = int(data.get("expires_in", self.token_ttl))
         except (TypeError, ValueError):
             expires_in = self.token_ttl
-        if not token:
-            logger.error("Ответ Avito не содержит access_token: {}", data)
-            raise AvitoAuthError("Отсутствует access_token в ответе Avito.")
 
         await self._cache_token(token, expires_in)
         logger.debug(

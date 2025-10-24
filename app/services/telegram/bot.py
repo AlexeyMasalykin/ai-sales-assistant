@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict, cast
 
 import httpx
 from loguru import logger
@@ -44,7 +44,7 @@ class TelegramBot:
                 f"{self.base_url}/setWebhook",
                 json={"url": url},
             )
-            result = response.json()
+            result = cast(Dict[str, Any], response.json())
 
         if result.get("ok"):
             logger.info("Webhook Telegram установлен: %s", url)
@@ -71,7 +71,7 @@ class TelegramBot:
                     "parse_mode": parse_mode,
                 },
             )
-            result = response.json()
+            result = cast(Dict[str, Any], response.json())
         except Exception as exc:  # noqa: BLE001
             logger.error("Ошибка при отправке сообщения Telegram: {}", exc)
             raise
@@ -102,7 +102,7 @@ class TelegramBot:
             response = await self.client.post(
                 f"{self.base_url}/setMyCommands", json={"commands": commands}
             )
-            data = response.json()
+            data = cast(Dict[str, Any], response.json())
             if data.get("ok"):
                 logger.info("Меню команд установлено")
         except Exception as exc:  # noqa: BLE001

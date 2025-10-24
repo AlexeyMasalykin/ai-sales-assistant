@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import session_factory
 from app.services.rag.embeddings import embeddings_service
@@ -24,7 +25,8 @@ class DocumentSearch:
         # Ограничиваем точность до 8 знаков (как в PostgreSQL float)
         embedding_str = "[" + ",".join(f"{x:.8g}" for x in query_embedding) + "]"
 
-        async with session_factory() as session:  # type: ignore[misc]
+        async with session_factory() as session_raw:
+            session = cast(AsyncSession, session_raw)
             # Используем литеральную подстановку для embedding (f-string),
             # так как параметры не работают с большими векторами в pgvector
             # NOTE: Не используем ORDER BY с той же операцией <=> -

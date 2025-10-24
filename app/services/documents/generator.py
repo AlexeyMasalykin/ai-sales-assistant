@@ -43,6 +43,7 @@ class DocumentGenerator:
     """Генератор документов с помощью GPT"""
 
     def __init__(self) -> None:
+        self.client: Optional[AsyncOpenAI]
         api_key = settings.openai_api_key
         if api_key:
             self.client = AsyncOpenAI(api_key=api_key.get_secret_value())

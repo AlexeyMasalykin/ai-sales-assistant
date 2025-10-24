@@ -100,4 +100,4 @@ class Settings(BaseSettings):
         return ["*"]
 
 
-settings = Settings()  # type: ignore[call-arg]
+settings = Settings()

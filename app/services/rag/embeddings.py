@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from loguru import logger
 from openai import AsyncOpenAI
+from typing import List, Optional, cast
 
 from app.core.settings import settings
 
@@ -13,6 +14,7 @@ class EmbeddingsService:
     """Сервис генерации embeddings с использованием OpenAI API."""
 
     def __init__(self) -> None:
+        self.client: Optional[AsyncOpenAI]
         api_key = settings.openai_api_key
         if api_key:
             self.client = AsyncOpenAI(api_key=api_key.get_secret_value(), timeout=90.0)
@@ -38,7 +40,7 @@ class EmbeddingsService:
             logger.error("Ошибка генерации embedding: {}", exc)
             raise
 
-        embedding = response.data[0].embedding
+        embedding = cast(List[float], response.data[0].embedding)
         logger.debug(
             "Получен embedding длиной %s для текста из %s символов.",
             len(embedding),
@@ -61,7 +63,7 @@ class EmbeddingsService:
             logger.error("Ошибка batch генерации embeddings: {}", exc)
             raise
 
-        embeddings = [item.embedding for item in response.data]
+        embeddings = [cast(List[float], item.embedding) for item in response.data]
         logger.info("Создано %s embeddings.", len(embeddings))
         return embeddings
 

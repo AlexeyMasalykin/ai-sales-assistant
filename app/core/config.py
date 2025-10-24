@@ -70,7 +70,7 @@ def get_settings() -> Settings:
     """Возвращает экземпляр настроек, создавая его при необходимости."""
     global _settings
     if _settings is None:
-        _settings = Settings()  # type: ignore[call-arg]
+        _settings = Settings()
     return _settings
 
 

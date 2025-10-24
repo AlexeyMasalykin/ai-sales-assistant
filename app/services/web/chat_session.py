@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Awaitable, Dict, List, Optional, cast
 
 from loguru import logger
 
@@ -24,12 +24,12 @@ class ChatSessionManager:
     async def create_session(
         self,
         user_name: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Создаёт новую сессию чата."""
         session_id = str(uuid.uuid4())
 
-        session_data = {
+        session_data: Dict[str, Any] = {
             "session_id": session_id,
             "user_name": user_name or "Гость",
             "created_at": datetime.utcnow().isoformat(),
@@ -52,27 +52,33 @@ class ChatSessionManager:
 
         return session_id
 
-    async def get_session(self, session_id: str) -> Optional[dict]:
+    async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Получает данные сессии."""
         key = f"{self.session_prefix}{session_id}"
         data = await redis_client.get(key)
 
-        if not data:
+        if data is None:
             logger.warning("Сессия {} не найдена", session_id)
             return None
 
-        return json.loads(data)
+        try:
+            session = cast(Dict[str, Any], json.loads(data))
+        except (TypeError, ValueError) as exc:  # noqa: BLE001
+            logger.error("Ошибка чтения данных сессии %s: %s", session_id, exc)
+            return None
+
+        return session
 
     async def add_message(self, session_id: str, role: str, content: str) -> None:
         """Добавляет сообщение в историю сессии."""
-        message = {
+        message: Dict[str, Any] = {
             "role": role,
             "content": content,
             "timestamp": datetime.utcnow().isoformat(),
         }
 
         key = f"{self.messages_prefix}{session_id}"
-        await redis_client.rpush(key, json.dumps(message))
+        await cast(Awaitable[int], redis_client.rpush(key, json.dumps(message)))
         await redis_client.expire(key, self.session_ttl)
 
         session = await self.get_session(session_id)
@@ -87,12 +93,30 @@ class ChatSessionManager:
 
         logger.debug("Добавлено сообщение в сессию {}", session_id)
 
-    async def get_messages(self, session_id: str, limit: int = 50) -> list[dict]:
+    async def get_messages(
+        self,
+        session_id: str,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
         """Получает историю сообщений сессии."""
         key = f"{self.messages_prefix}{session_id}"
-        messages_json = await redis_client.lrange(key, -limit, -1)
+        raw_messages = await cast(
+            Awaitable[List[str]],
+            redis_client.lrange(key, -limit, -1),
+        )
 
-        messages = [json.loads(msg) for msg in messages_json]
+        messages: List[Dict[str, Any]] = []
+        for raw_message in raw_messages:
+            try:
+                parsed = cast(Dict[str, Any], json.loads(raw_message))
+            except (TypeError, ValueError) as exc:  # noqa: BLE001
+                logger.warning(
+                    "Сообщение чата %s пропущено из-за ошибки парсинга: %s",
+                    session_id,
+                    exc,
+                )
+                continue
+            messages.append(parsed)
 
         logger.debug("Получено {} сообщений для сессии {}", len(messages), session_id)
 
@@ -115,9 +139,10 @@ class ChatSessionManager:
     ) -> str:
         """Получает или создаёт сессию для Telegram чата."""
         session_key = f"{self.telegram_prefix}{chat_id}"
-        session_id = await redis_client.get(session_key)
+        stored_session_id = await redis_client.get(session_key)
 
-        if session_id:
+        if isinstance(stored_session_id, str) and stored_session_id:
+            session_id = stored_session_id
             await self.extend_session(session_id)
             await redis_client.expire(session_key, self.session_ttl)
             logger.debug(
@@ -140,18 +165,19 @@ class ChatSessionManager:
 
         return session_id
 
-    async def get_context_for_llm(self, session_id: str, limit: int = 10) -> list[dict]:
+    async def get_context_for_llm(
+        self,
+        session_id: str,
+        limit: int = 10,
+    ) -> List[Dict[str, str]]:
         """Получает сообщения в формате OpenAI для LLM."""
         messages = await self.get_messages(session_id, limit)
 
-        context: list[dict] = []
+        context: List[Dict[str, str]] = []
         for message in messages:
-            context.append(
-                {
-                    "role": message["role"],
-                    "content": message["content"],
-                },
-            )
+            role = str(message.get("role", "user"))
+            content = str(message.get("content", ""))
+            context.append({"role": role, "content": content})
 
         logger.debug(
             "Сформирован контекст для LLM ({} сообщений) по сессии {}",

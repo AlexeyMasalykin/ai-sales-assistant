@@ -18,7 +18,8 @@ redis_client: Redis = Redis.from_url(
 async def verify_redis() -> None:
     """Проверяет доступность Redis."""
     try:
-        result = bool(await redis_client.ping())  # type: ignore[misc]
+        ping_result = await redis_client.ping()
+        result = bool(ping_result)
         if not result:
             raise RuntimeError("Redis ping вернул отрицательный результат.")
     except Exception as exc:
