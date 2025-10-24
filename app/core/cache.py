@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
+from typing import Any
+
 from loguru import logger
 from redis.asyncio import Redis
 
@@ -18,8 +21,12 @@ redis_client: Redis = Redis.from_url(
 async def verify_redis() -> None:
     """Проверяет доступность Redis."""
     try:
-        ping_result = await redis_client.ping()
-        result = bool(ping_result)
+        ping_response: Any = redis_client.ping()
+        if inspect.isawaitable(ping_response):
+            ping_raw = await ping_response
+        else:
+            ping_raw = ping_response
+        result = bool(ping_raw)
         if not result:
             raise RuntimeError("Redis ping вернул отрицательный результат.")
     except Exception as exc:

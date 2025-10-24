@@ -33,7 +33,10 @@ def create_access_token(
     }
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    if not isinstance(encoded_token, str):
+        encoded_token = str(encoded_token)
+    return encoded_token
 
 
 def decode_token(token: str) -> TokenPayload:

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from loguru import logger
 from openai import AsyncOpenAI
-from typing import List, Optional, cast
+from typing import Optional
 
 from app.core.settings import settings
 
@@ -40,7 +40,7 @@ class EmbeddingsService:
             logger.error("Ошибка генерации embedding: {}", exc)
             raise
 
-        embedding = cast(List[float], response.data[0].embedding)
+        embedding = list(response.data[0].embedding)
         logger.debug(
             "Получен embedding длиной %s для текста из %s символов.",
             len(embedding),
@@ -63,7 +63,7 @@ class EmbeddingsService:
             logger.error("Ошибка batch генерации embeddings: {}", exc)
             raise
 
-        embeddings = [cast(List[float], item.embedding) for item in response.data]
+        embeddings = [list(item.embedding) for item in response.data]
         logger.info("Создано %s embeddings.", len(embeddings))
         return embeddings
 

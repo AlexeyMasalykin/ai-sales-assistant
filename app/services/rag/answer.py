@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from loguru import logger
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
 from typing import Dict, List, Optional, Sequence
 
 from app.core.settings import settings
@@ -60,8 +65,11 @@ class AnswerGenerator:
 
         try:
             messages: List[ChatCompletionMessageParam] = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question},
+                ChatCompletionSystemMessageParam(
+                    role="system",
+                    content=system_prompt,
+                ),
+                ChatCompletionUserMessageParam(role="user", content=question),
             ]
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -114,9 +122,9 @@ class AnswerGenerator:
         )
 
         messages: List[ChatCompletionMessageParam] = [
-            {
-                "role": "system",
-                "content": (
+            ChatCompletionSystemMessageParam(
+                role="system",
+                content=(
                     f"Ты — AI Sales Assistant компании, "
                     f"специализирующейся на AI-решениях.\n\n"
                     f"Контекст из базы знаний:\n{knowledge_context}\n\n"
@@ -127,21 +135,26 @@ class AnswerGenerator:
                     f"- Если не знаешь — предложи связаться с менеджером\n"
                     f"- Сохраняй контекст предыдущих сообщений"
                 ),
-            },
+            ),
         ]
 
         if context:
             for item in context:
                 role = item.get("role", "user")
                 content = item.get("content", "")
-                messages.append({"role": role, "content": content})
+                if role == "assistant":
+                    messages.append(
+                        ChatCompletionAssistantMessageParam(
+                            role="assistant",
+                            content=content,
+                        ),
+                    )
+                else:
+                    messages.append(
+                        ChatCompletionUserMessageParam(role="user", content=content),
+                    )
 
-        messages.append(
-            {
-                "role": "user",
-                "content": question,
-            },
-        )
+        messages.append(ChatCompletionUserMessageParam(role="user", content=question))
 
         try:
             response = await self.client.chat.completions.create(
