@@ -16,19 +16,23 @@ try:
         async_sessionmaker,
         create_async_engine,
     )
+
+    SQLALCHEMY_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - fallback для облегчённой среды
-    text = None
-    AsyncEngine = AsyncSession = object
+    text = None  # type: ignore[assignment]
+    AsyncEngine = AsyncSession = object  # type: ignore[assignment,misc]
 
-    def create_async_engine(*args: object, **kwargs: object) -> object:  # noqa: D401
-        raise RuntimeError("SQLAlchemy не установлен. Возможен только оффлайн-режим.")
+    def create_async_engine(*args: object, **kwargs: object) -> object:  # type: ignore[misc]  # noqa: D401,E501
+        raise RuntimeError(
+            "SQLAlchemy не установлен. Возможен только оффлайн-режим."
+        )
 
-    def async_sessionmaker(*args: object, **kwargs: object) -> object:  # noqa: D401
-        raise RuntimeError("SQLAlchemy не установлен. Нельзя создавать сессии БД.")
+    def async_sessionmaker(*args: object, **kwargs: object) -> object:  # type: ignore[no-redef]  # noqa: D401,E501
+        raise RuntimeError(
+            "SQLAlchemy не установлен. Нельзя создавать сессии БД."
+        )
 
     SQLALCHEMY_AVAILABLE = False
-else:
-    SQLALCHEMY_AVAILABLE = True
 
 from app.core.settings import settings
 
@@ -45,8 +49,8 @@ if SQLALCHEMY_AVAILABLE:
         expire_on_commit=False,
     )
 else:
-    engine = None
-    session_factory = None
+    engine = None  # type: ignore[assignment]
+    session_factory = None  # type: ignore[assignment]
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
