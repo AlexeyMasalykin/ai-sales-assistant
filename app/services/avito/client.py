@@ -28,21 +28,28 @@ class AvitoAPIClient:
         self.timeout = httpx.Timeout(30.0)
         self._max_attempts = 3
 
-    async def send_message(self, chat_id: str, text: str) -> dict[str, Any]:
+    async def send_message(
+        self, chat_id: str, text: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Отправляет текстовое сообщение в чат Avito.
 
         Args:
             chat_id: Идентификатор чата Avito.
-            text: Текст сообщения.
+            text: Текст сообщения (максимум 1000 символов).
+            user_id: ID пользователя. Если не указан, берется из settings.
 
         Returns:
             Ответ Avito API с данными отправленного сообщения.
         """
+        from app.core.settings import settings
+
+        uid = user_id or settings.avito_user_id
         payload = {
-            "chat_id": chat_id,
-            "message": {"type": "text", "text": text},
+            "type": "text",
+            "message": {"text": text},
         }
-        return await self._request("POST", "/messenger/v3/send", json=payload)
+        endpoint = f"/messenger/v1/accounts/{uid}/chats/{chat_id}/messages"
+        return await self._request("POST", endpoint, json=payload)
 
     async def upload_image(self, file_path: str) -> dict[str, Any]:
         """Загружает изображение в Avito Messenger.
@@ -64,36 +71,52 @@ class AvitoAPIClient:
                 files=files,
             )
 
-    async def get_chats(self, limit: int = 50) -> list[dict[str, Any]]:
+    async def get_chats(
+        self, limit: int = 50, user_id: str | None = None
+    ) -> list[dict[str, Any]]:
         """Возвращает список чатов Avito.
 
         Args:
-            limit: Максимальное количество чатов в ответе.
+            limit: Максимальное количество чатов в ответе (max 100).
+            user_id: ID пользователя. Если не указан, берется из settings.
 
         Returns:
             Список чатов Avito.
         """
+        from app.core.settings import settings
+
+        uid = user_id or settings.avito_user_id
+        endpoint = f"/messenger/v2/accounts/{uid}/chats"
         response = await self._request(
             "GET",
-            "/messenger/v3/chats",
-            params={"limit": limit},
+            endpoint,
+            params={"limit": min(limit, 100)},
         )
         return response.get("chats", [])
 
-    async def get_chat_messages(self, chat_id: str) -> list[dict[str, Any]]:
+    async def get_chat_messages(
+        self, chat_id: str, limit: int = 100, user_id: str | None = None
+    ) -> list[dict[str, Any]]:
         """Возвращает сообщения указанного чата.
 
         Args:
             chat_id: Идентификатор чата Avito.
+            limit: Максимальное количество сообщений (max 100).
+            user_id: ID пользователя. Если не указан, берется из settings.
 
         Returns:
             Список сообщений чата.
         """
+        from app.core.settings import settings
+
+        uid = user_id or settings.avito_user_id
+        endpoint = f"/messenger/v3/accounts/{uid}/chats/{chat_id}/messages/"
         response = await self._request(
             "GET",
-            f"/messenger/v3/chats/{chat_id}/messages",
+            endpoint,
+            params={"limit": min(limit, 100)},
         )
-        return response.get("messages", [])
+        return response if isinstance(response, list) else response.get("messages", [])
 
     async def get_items(self) -> list[dict[str, Any]]:
         """Возвращает список объявлений пользователя.
@@ -119,7 +142,7 @@ class AvitoAPIClient:
         )
 
     async def register_webhook(self, webhook_url: str) -> dict[str, Any]:
-        """Регистрирует webhook URL в Avito Messenger.
+        """Регистрирует webhook URL в Avito Messenger (v3).
 
         Args:
             webhook_url: Публичный HTTPS URL для приёма событий.
@@ -135,17 +158,23 @@ class AvitoAPIClient:
         )
 
     async def get_webhook_status(self) -> dict[str, Any]:
-        """Возвращает информацию о текущих подписках webhook."""
+        """Возвращает информацию о текущих подписках webhook (v1)."""
         return await self._request(
-            "GET",
+            "POST",
             "/messenger/v1/subscriptions",
         )
 
-    async def unregister_webhook(self) -> dict[str, Any]:
-        """Удаляет текущую подписку webhook."""
+    async def unregister_webhook(self, webhook_url: str) -> dict[str, Any]:
+        """Удаляет текущую подписку webhook (v1).
+
+        Args:
+            webhook_url: URL для отписки.
+        """
+        payload = {"url": webhook_url}
         return await self._request(
-            "DELETE",
-            "/messenger/v3/webhook",
+            "POST",
+            "/messenger/v1/webhook/unsubscribe",
+            json=payload,
         )
 
     async def _request(
