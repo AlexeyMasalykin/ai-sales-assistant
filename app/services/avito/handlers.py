@@ -23,6 +23,12 @@ class AvitoMessageHandlers:
             from app.services.rag.answer import answer_generator
 
             # Генерируем ответ через RAG систему
+            if answer_generator.client is None:
+                logger.debug(
+                    "Avito: RAG недоступен (клиент LLM отсутствует), используем fallback."
+                )
+                return AvitoMessageHandlers._get_fallback_response(text)
+
             answer = await answer_generator.generate_answer(text)
 
             # Если RAG не вернул ответ, используем fallback

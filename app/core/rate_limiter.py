@@ -10,7 +10,7 @@ from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.core.cache import redis_client
+from app.core.cache import get_redis_client
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -43,6 +43,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             client_ip = request.client.host
 
         redis_key = f"rate:{client_ip}"
+        redis_client = get_redis_client()
         try:
             current = await redis_client.incr(redis_key)
             if current == 1:

@@ -10,6 +10,7 @@ from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
 )
+from textwrap import shorten
 from typing import Dict, List, Optional, Sequence
 
 from app.core.settings import settings
@@ -33,7 +34,7 @@ class AnswerGenerator:
     async def generate_answer(self, question: str, user_name: str = "Друг") -> str:
         """Возвращает ответ на вопрос пользователя, используя RAG."""
         if not self.client:
-            return "Извините, сервис временно недоступен."
+            return await self._generate_offline_answer(question, user_name)
 
         logger.info("Генерация ответа для запроса '%s'.", question[:50])
 
@@ -102,7 +103,7 @@ class AnswerGenerator:
     ) -> str:
         """Формирует ответ, учитывая историю переписки."""
         if not self.client:
-            return "Извините, сервис временно недоступен."
+            return await self._generate_offline_answer(question, user_name)
 
         logger.info(
             "Генерация ответа с контекстом для '%s' (история: %d сообщений)",
@@ -181,6 +182,31 @@ class AnswerGenerator:
         logger.info("Ответ с контекстом сгенерирован (%d символов)", len(answer))
 
         return answer
+
+    async def _generate_offline_answer(self, question: str, user_name: str) -> str:
+        """Формирует эхо-ответ без обращения к LLM."""
+        documents = await document_search.search(question, limit=2)
+        intro = (
+            f"<b>{user_name}</b>, мы подготовили краткую информацию по вашему запросу."
+        )
+        if not documents:
+            return (
+                intro
+                + "\n\nСейчас в базе знаний нет готового ответа. Оставьте контакты, и менеджер вернётся с подробностями."
+            )
+
+        snippets: List[str] = []
+        for doc in documents:
+            content = doc.get("content", "")
+            snippet = shorten(content.replace("\n", " "), width=280, placeholder="...")
+            title = doc.get("title", "Документ")
+            snippets.append(f"<b>{title}</b>: {snippet}")
+
+        body = "\n\n".join(snippets)
+        recommendation = (
+            "\n\nЕсли требуется расчёт стоимости или презентация, напишите детали — подготовим в течение дня."
+        )
+        return intro + "\n\n" + body + recommendation
 
 
 answer_generator = AnswerGenerator()

@@ -9,7 +9,7 @@ from typing import Any, Awaitable, Dict, List, Optional, cast
 
 from loguru import logger
 
-from app.core.cache import redis_client
+from app.core.cache import get_redis_client
 
 
 class ChatSessionManager:
@@ -38,7 +38,7 @@ class ChatSessionManager:
         }
 
         key = f"{self.session_prefix}{session_id}"
-        await redis_client.setex(
+        await get_redis_client().setex(
             key,
             self.session_ttl,
             json.dumps(session_data),
@@ -55,7 +55,7 @@ class ChatSessionManager:
     async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Получает данные сессии."""
         key = f"{self.session_prefix}{session_id}"
-        data = await redis_client.get(key)
+        data = await get_redis_client().get(key)
 
         if data is None:
             logger.warning("Сессия {} не найдена", session_id)
@@ -78,6 +78,7 @@ class ChatSessionManager:
         }
 
         key = f"{self.messages_prefix}{session_id}"
+        redis_client = get_redis_client()
         await cast(Awaitable[int], redis_client.rpush(key, json.dumps(message)))
         await redis_client.expire(key, self.session_ttl)
 
@@ -100,6 +101,7 @@ class ChatSessionManager:
     ) -> List[Dict[str, Any]]:
         """Получает историю сообщений сессии."""
         key = f"{self.messages_prefix}{session_id}"
+        redis_client = get_redis_client()
         raw_messages = await cast(
             Awaitable[List[str]],
             redis_client.lrange(key, -limit, -1),
@@ -127,6 +129,7 @@ class ChatSessionManager:
         session_key = f"{self.session_prefix}{session_id}"
         messages_key = f"{self.messages_prefix}{session_id}"
 
+        redis_client = get_redis_client()
         await redis_client.expire(session_key, self.session_ttl)
         await redis_client.expire(messages_key, self.session_ttl)
 
@@ -139,6 +142,7 @@ class ChatSessionManager:
     ) -> str:
         """Получает или создаёт сессию для Telegram чата."""
         session_key = f"{self.telegram_prefix}{chat_id}"
+        redis_client = get_redis_client()
         stored_session_id = await redis_client.get(session_key)
 
         if isinstance(stored_session_id, str) and stored_session_id:

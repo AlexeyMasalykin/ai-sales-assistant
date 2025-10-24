@@ -82,7 +82,8 @@ async def test_auth_error_401() -> None:
         mock_client.return_value.__aenter__.return_value.post = AsyncMock(
             return_value=mock_response,
         )
-        with patch("app.services.avito.auth.redis_client") as mock_redis:
+        # redis_client импортируется из app.core.cache
+        with patch("app.core.cache.redis_client") as mock_redis:
             mock_redis.get.return_value = None
 
             auth = AvitoAuthManager()

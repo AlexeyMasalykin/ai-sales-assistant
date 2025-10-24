@@ -60,7 +60,13 @@ class DocumentLoader:
         content = file_path.read_text(encoding="utf-8")
         title = file_path.stem.replace("_", " ").title()
 
-        # Генерируем embedding
+        if embeddings_service.client is None:
+            logger.debug(
+                "Пропуск сохранения embeddings для %s: OpenAI клиент не настроен.",
+                file_path,
+            )
+            return
+
         embedding = await embeddings_service.generate_embedding(content)
 
         # Преобразуем в PostgreSQL array format: [1.0, 2.0, 3.0]

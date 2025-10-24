@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from app.core.cache import redis_client
+from app.core.cache import get_redis_client
 from app.core.settings import settings
 from app.services.avito.client import AvitoAPIClient
 from app.services.avito.exceptions import AvitoAPIError, AvitoRateLimitError
@@ -129,6 +129,7 @@ class AvitoSyncManager:
             stats["synced"],
             stats["failed"],
         )
+        redis_client = get_redis_client()
         await redis_client.set(
             "avito:last_sync_stats",
             json.dumps(stats),
@@ -141,6 +142,7 @@ class AvitoSyncManager:
         logger.debug("Сбор статистики Avito для объявления %s.", item_id)
         stats = await self.client.get_item_stats(item_id)
         cache_key = f"avito:item:{item_id}"
+        redis_client = get_redis_client()
         await redis_client.setex(
             cache_key,
             settings.avito_cache_ttl_seconds,
@@ -150,6 +152,7 @@ class AvitoSyncManager:
     async def get_item_statistics(self, item_id: str) -> dict[str, Any]:
         """Возвращает статистику объявления из кэша либо Avito API."""
         cache_key = f"avito:item:{item_id}"
+        redis_client = get_redis_client()
         cached = await redis_client.get(cache_key)
         if cached:
             logger.debug("Статистика объявления %s получена из кэша.", item_id)

@@ -18,6 +18,11 @@ redis_client: Redis = Redis.from_url(
 )
 
 
+def get_redis_client() -> Redis:
+    """Возвращает текущий Redis клиент (удобно для подмены в тестах)."""
+    return redis_client
+
+
 async def verify_redis() -> None:
     """Проверяет доступность Redis."""
     try:

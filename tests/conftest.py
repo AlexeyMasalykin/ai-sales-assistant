@@ -49,7 +49,7 @@ async def mock_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock.lrange = AsyncMock(return_value=[])
 
     monkeypatch.setattr("app.core.cache.redis_client", mock)
-    monkeypatch.setattr("app.services.web.chat_session.redis_client", mock)
+    # chat_session импортирует redis_client из app.core.cache, патчить не нужно
     return mock
 
 

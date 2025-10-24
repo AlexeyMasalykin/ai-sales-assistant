@@ -7,7 +7,7 @@ import httpx
 from loguru import logger
 from typing import Any, Dict, cast
 
-from app.core.cache import redis_client
+from app.core.cache import get_redis_client
 from app.core.settings import settings
 from app.services.avito.exceptions import AvitoAPITimeoutError, AvitoAuthError
 
@@ -42,7 +42,7 @@ class AvitoAuthManager:
         Returns:
             None.
         """
-        await redis_client.delete(self.cache_key)
+        await get_redis_client().delete(self.cache_key)
         logger.debug("Access token Avito удалён из кэша.")
 
     async def _get_cached_token(self) -> str | None:
@@ -51,11 +51,11 @@ class AvitoAuthManager:
         Returns:
             Строка токена или None, если требуется обновление.
         """
-        token: str | None = await redis_client.get(self.cache_key)
+        token: str | None = await get_redis_client().get(self.cache_key)
         if not token:
             return None
 
-        ttl = await redis_client.ttl(self.cache_key)
+        ttl = await get_redis_client().ttl(self.cache_key)
         if ttl == -2:
             return None
         if ttl != -1 and ttl < self.refresh_before:
@@ -153,5 +153,5 @@ class AvitoAuthManager:
             expires_in: Срок действия токена в секундах.
         """
         ttl = max(1, min(expires_in, self.token_ttl))
-        await redis_client.set(self.cache_key, token, ex=ttl)
+        await get_redis_client().set(self.cache_key, token, ex=ttl)
         logger.debug("Токен Avito сохранён в Redis с TTL {} секунд.", ttl)
