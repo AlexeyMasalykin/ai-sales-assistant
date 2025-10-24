@@ -33,14 +33,12 @@ exclude = [
     "env/",
     
     # Кэш Python
-    "__pycache__/",
-    "*/__pycache__/",
-    "**/__pycache__/",
+    ".*/__pycache__/",
     
     # Сборка и артефакты
     "build/",
     "dist/",
-    "*.egg-info/",
+    ".*\\.egg-info/",
     
     # Тесты и покрытие
     ".pytest_cache/",
@@ -53,16 +51,16 @@ exclude = [
     
     # Логи и временные файлы
     "logs/",
-    "*.log",
-    "*.tmp",
+    ".*\\.log",
+    ".*\\.tmp",
     
     # Docker и системные файлы
-    "*.pid",
+    ".*\\.pid",
     ".DS_Store",
     "Thumbs.db",
     
     # Backup файлы
-    "*.backup",
+    ".*\\.backup",
     ".env.backup",
     
     # Документы и знания (если не нужны для типизации)
@@ -81,7 +79,7 @@ exclude = [
     "specs/",
     
     # Markdown файлы (если есть Python код внутри)
-    "*.md",
+    ".*\\.md",
     
     # Конфигурационные файлы
     "alembic.ini",

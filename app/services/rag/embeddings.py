@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from loguru import logger
 from openai import AsyncOpenAI
-from typing import Optional
 
 from app.core.settings import settings
 

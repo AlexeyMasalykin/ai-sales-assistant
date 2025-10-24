@@ -6,7 +6,6 @@ from typing import Dict, Optional
 
 from loguru import logger
 from openai import AsyncOpenAI
-from typing import Optional
 
 from app.core.settings import settings
 from app.services.documents.templates import template_manager
@@ -17,26 +16,26 @@ from app.services.pdf.generator import pdf_generator
 def clean_html_from_markdown(html: str) -> str:
     """
     Удаляет markdown обёртки из HTML, если GPT их добавил.
-    
+
     GPT иногда возвращает HTML в markdown блоках:
     ```html
     <html>...</html>
     ```
-    
+
     Эта функция очищает такие обёртки.
     """
     html = html.strip()
-    
+
     # Удаляем открывающий блок
     if html.startswith("```html"):
         html = html[7:]
     elif html.startswith("```"):
         html = html[3:]
-    
+
     # Удаляем закрывающий блок
     if html.endswith("```"):
         html = html[:-3]
-    
+
     return html.strip()
 
 

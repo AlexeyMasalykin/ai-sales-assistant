@@ -15,6 +15,7 @@ from app.core.settings import settings
 
 class PDFSizeExceededException(Exception):
     """Исключение при превышении максимального размера PDF."""
+
     pass
 
 
@@ -119,7 +120,9 @@ class PDFGenerator:
         file_path = self.output_dir / filename
         file_path.write_bytes(pdf_bytes)
 
-        logger.info("PDF сохранён: %s (%.2f МБ)", file_path, len(pdf_bytes) / (1024 * 1024))
+        logger.info(
+            "PDF сохранён: %s (%.2f МБ)", file_path, len(pdf_bytes) / (1024 * 1024)
+        )
         return file_path
 
     def generate_with_template(
@@ -183,13 +186,13 @@ class PDFGenerator:
                 c for c in client_name if c.isalnum() or c in (" ", "_", "-")
             ).strip()
             safe_client_name = safe_client_name.replace(" ", "_")
-            
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{document_type}_{safe_client_name}_{timestamp}.pdf"
 
             file_path = self.output_dir / filename
             file_path.write_bytes(pdf_bytes)
-            
+
             logger.info(
                 "PDF документ '%s' для клиента '%s' сохранён: %s",
                 document_type,
@@ -211,7 +214,7 @@ class PDFGenerator:
         """
         size_bytes = len(pdf_bytes)
         size_mb = size_bytes / (1024 * 1024)
-        
+
         return {
             "size_bytes": size_bytes,
             "size_mb": round(size_mb, 2),
@@ -222,4 +225,3 @@ class PDFGenerator:
 
 # Singleton
 pdf_generator = PDFGenerator()
-
