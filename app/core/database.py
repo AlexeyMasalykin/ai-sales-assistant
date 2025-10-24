@@ -23,14 +23,10 @@ except ModuleNotFoundError:  # pragma: no cover - fallback для облегчё
     AsyncEngine = AsyncSession = object  # type: ignore[assignment,misc]
 
     def create_async_engine(*args: object, **kwargs: object) -> object:  # type: ignore[misc]  # noqa: D401,E501
-        raise RuntimeError(
-            "SQLAlchemy не установлен. Возможен только оффлайн-режим."
-        )
+        raise RuntimeError("SQLAlchemy не установлен. Возможен только оффлайн-режим.")
 
     def async_sessionmaker(*args: object, **kwargs: object) -> object:  # type: ignore[no-redef]  # noqa: D401,E501
-        raise RuntimeError(
-            "SQLAlchemy не установлен. Нельзя создавать сессии БД."
-        )
+        raise RuntimeError("SQLAlchemy не установлен. Нельзя создавать сессии БД.")
 
     SQLALCHEMY_AVAILABLE = False
 
