@@ -18,7 +18,9 @@ async def test_handle_greeting_message() -> None:
 
     # RAG генерирует персонализированные ответы
     assert len(response) > 0
-    assert any(keyword in response.lower() for keyword in ("привет", "здравствуй", "помочь"))
+    assert any(
+        keyword in response.lower() for keyword in ("привет", "здравствуй", "помочь")
+    )
 
 
 @pytest.mark.asyncio
@@ -31,7 +33,9 @@ async def test_handle_price_question() -> None:
     )
 
     # RAG должен вернуть информацию о ценах
-    assert any(keyword in response.lower() for keyword in ("цен", "стоимость", "₽", "руб"))
+    assert any(
+        keyword in response.lower() for keyword in ("цен", "стоимость", "₽", "руб")
+    )
     assert len(response) > 50  # Детальный ответ с ценами
 
 

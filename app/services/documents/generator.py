@@ -294,22 +294,30 @@ class DocumentGenerator:
 
         if not rows:
             rows.append(
-                "<tr><td>Индивидуально</td><td>Комплексное решение</td><td>По запросу</td><td>Подбор под задачи клиента</td></tr>"
+                "<tr><td>Индивидуально</td><td>Комплексное решение</td>"
+                "<td>По запросу</td><td>Подбор под задачи клиента</td></tr>"
             )
 
         rows_html = "".join(rows)
         return (
-            "<html><head><meta charset='UTF-8'><title>Прайс-лист</title>"
-            "<style>body{font-family:Arial,sans-serif;padding:24px;}h1{color:#2c3e50;}"
+            "<html><head><meta charset='UTF-8'>"
+            "<title>Прайс-лист</title>"
+            "<style>body{font-family:Arial,sans-serif;padding:24px;}"
+            "h1{color:#2c3e50;}"
             "table{width:100%;border-collapse:collapse;margin-top:16px;}"
             "th,td{border:1px solid #e0e0e0;padding:10px;text-align:left;}"
             "th{background:#f5f5f5;}</style></head><body>"
             f"<h1>Персональный прайс-лист для {client_name}</h1>"
-            "<p>Это ориентировочный расчёт. Финальная стоимость зависит от объёма внедрения и требуемых интеграций.</p>"
-            "<table><tr><th>Тариф</th><th>Продукт</th><th>Стоимость</th><th>Основные функции</th></tr>"
+            "<p>Это ориентировочный расчёт. Финальная стоимость "
+            "зависит от объёма внедрения и требуемых интеграций.</p>"
+            "<table><tr><th>Тариф</th><th>Продукт</th><th>Стоимость</th>"
+            "<th>Основные функции</th></tr>"
             f"{rows_html}</table>"
-            "<p><strong>Дополнительные услуги:</strong> внедрение от 80 000 ₽, интеграция с CRM от 30 000 ₽, обучение от 15 000 ₽ в день.</p>"
-            "<p>Напишите, какие задачи стоят перед вами — подготовим детальный расчёт и график внедрения.</p>"
+            "<p><strong>Дополнительные услуги:</strong> "
+            "внедрение от 80 000 ₽, интеграция с CRM от 30 000 ₽, "
+            "обучение от 15 000 ₽ в день.</p>"
+            "<p>Напишите, какие задачи стоят перед вами — "
+            "подготовим детальный расчёт и график внедрения.</p>"
             "</body></html>"
         )
 

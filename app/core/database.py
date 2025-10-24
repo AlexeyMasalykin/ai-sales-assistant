@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from asyncio.subprocess import PIPE
 from collections.abc import AsyncGenerator
-from typing import Any
 
 from loguru import logger
 
