@@ -196,10 +196,28 @@ class AvitoWebhookHandler:
         logger.debug("Avito: запрос статуса webhook.")
         return await self.client.get_webhook_status()
 
-    async def unregister_webhook(self) -> dict[str, Any]:
-        """Удаляет активную подписку Avito webhook."""
+    async def unregister_webhook(
+        self, webhook_url: str | None = None
+    ) -> dict[str, Any]:
+        """Удаляет активную подписку Avito webhook.
+
+        Args:
+            webhook_url: URL для отписки. Если не указан, берется из статуса.
+        """
         logger.info("Avito: удаление webhook подписки.")
-        return await self.client.unregister_webhook()
+
+        # Получаем URL из текущей подписки, если не указан
+        if not webhook_url:
+            status = await self.get_webhook_status()
+            subscriptions = status.get("subscriptions", [])
+            if subscriptions:
+                webhook_url = subscriptions[0].get("url", "")
+
+        if not webhook_url:
+            logger.warning("Avito: webhook URL не найден для отписки.")
+            return {"ok": False, "error": "No webhook URL found"}
+
+        return await self.client.unregister_webhook(webhook_url)
 
 
 webhook_handler = AvitoWebhookHandler()

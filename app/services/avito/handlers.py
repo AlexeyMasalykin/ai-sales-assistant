@@ -10,13 +10,42 @@ class AvitoMessageHandlers:
 
     @staticmethod
     async def handle_text_message(chat_id: str, text: str, author_id: str) -> str:
-        """Обрабатывает текстовое сообщение и возвращает ответ."""
+        """Обрабатывает текстовое сообщение и генерирует ответ через RAG."""
         logger.info(
             "Avito: текстовое сообщение в чате %s от %s: %s",
             chat_id,
             author_id,
             text[:80],
         )
+
+        try:
+            # Импортируем RAG engine внутри метода для избежания циклических импортов
+            from app.services.rag.answer import answer_engine
+
+            # Генерируем ответ через RAG систему
+            answer = await answer_engine.generate_answer(text)
+
+            # Если RAG не вернул ответ, используем fallback
+            if not answer or answer.strip() == "":
+                logger.warning(
+                    "RAG не вернул ответ для чата %s, используем fallback", chat_id
+                )
+                return AvitoMessageHandlers._get_fallback_response(text)
+
+            logger.info(
+                "RAG ответ сгенерирован для чата %s (длина: %s)", chat_id, len(answer)
+            )
+            return answer
+
+        except Exception as e:
+            logger.error(
+                "Ошибка генерации ответа через RAG для чата %s: %s", chat_id, e
+            )
+            return AvitoMessageHandlers._get_fallback_response(text)
+
+    @staticmethod
+    def _get_fallback_response(text: str) -> str:
+        """Возвращает базовый ответ, если RAG недоступен."""
         text_lower = text.lower()
 
         if any(word in text_lower for word in ("привет", "здравствуйте", "добрый")):
