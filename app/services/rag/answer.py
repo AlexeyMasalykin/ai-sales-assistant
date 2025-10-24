@@ -191,17 +191,14 @@ class AnswerGenerator:
         )
         if not documents:
             return (
-                intro
-                + "\n\nСейчас в базе знаний нет готового ответа. "
+                intro + "\n\nСейчас в базе знаний нет готового ответа. "
                 "Оставьте контакты, и менеджер вернётся с подробностями."
             )
 
         snippets: List[str] = []
         for doc in documents:
             content = doc.get("content", "")
-            snippet = shorten(
-                content.replace("\n", " "), width=280, placeholder="..."
-            )
+            snippet = shorten(content.replace("\n", " "), width=280, placeholder="...")
             title = doc.get("title", "Документ")
             snippets.append(f"<b>{title}</b>: {snippet}")
 
