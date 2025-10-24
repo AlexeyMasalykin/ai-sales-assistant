@@ -113,9 +113,15 @@
   - ✅ `documents/knowledge_base/documents/templates/invoice_template.html` - Счёт (324 строки)
   - ✅ Unit-тесты шаблонов: `tests/unit/test_document_templates.py` (8/8 пройдено)
   
-- ✅ **T025** Реализована генерация документов
-  - `app/services/documents/generator.py`
-  - `app/services/documents/templates.py`
+- ✅ **T025** Реализована генерация PDF через WeasyPrint
+  - ✅ `app/services/pdf/generator.py` - модуль PDF-генерации
+  - ✅ `app/services/documents/generator.py` - интеграция PDF-методов
+  - ✅ `app/core/settings.py` - настройки MAX_PDF_SIZE_MB (10 МБ)
+  - ✅ `data/documents/` - директория для хранения PDF
+  - ✅ `tests/unit/test_pdf_generator.py` - 16 unit-тестов
+  - ✅ `tests/integration/test_pdf_generation.py` - интеграционные тесты
+  - ✅ Проверка размера PDF, автоматическое именование файлов
+  - ✅ Поддержка кириллицы, HTML/CSS стилизация, многостраничные документы
   
 - ✅ **T026** Написаны unit-тесты расчёта стоимости
   - ✅ `tests/unit/test_pricing_calculator.py` - 11 тестов

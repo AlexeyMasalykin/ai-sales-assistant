@@ -20,7 +20,90 @@ disallow_untyped_defs = true
 ignore_missing_imports = true
 no_implicit_optional = true
 plugins = []
-exclude = ["migrations/versions"]
+
+# Исключаем файлы, которые не попадают в GitHub (согласно .gitignore)
+# и другие файлы, которые не должны проверяться mypy
+exclude = [
+    # Миграции базы данных
+    "migrations/versions/",
+    
+    # Виртуальные окружения
+    "venv/",
+    ".venv/",
+    "env/",
+    
+    # Кэш Python
+    "__pycache__/",
+    "*/__pycache__/",
+    "**/__pycache__/",
+    
+    # Сборка и артефакты
+    "build/",
+    "dist/",
+    "*.egg-info/",
+    
+    # Тесты и покрытие
+    ".pytest_cache/",
+    ".coverage",
+    
+    # IDE и редакторы
+    ".idea/",
+    ".vscode/",
+    ".cursor/",
+    
+    # Логи и временные файлы
+    "logs/",
+    "*.log",
+    "*.tmp",
+    
+    # Docker и системные файлы
+    "*.pid",
+    ".DS_Store",
+    "Thumbs.db",
+    
+    # Backup файлы
+    "*.backup",
+    ".env.backup",
+    
+    # Документы и знания (если не нужны для типизации)
+    "documents/",
+    
+    # Статические файлы
+    "static/",
+    
+    # Nginx конфигурация
+    "nginx/",
+    
+    # Deploy конфигурация
+    "deploy/",
+    
+    # Спецификации
+    "specs/",
+    
+    # Markdown файлы (если есть Python код внутри)
+    "*.md",
+    
+    # Конфигурационные файлы
+    "alembic.ini",
+    "pytest.ini",
+    "docker-compose.yml",
+    "Dockerfile",
+    "requirements.txt",
+    "README.md",
+    "PROJECT_STATUS.md",
+    "AVITO_*.md",
+    "T*.md",
+    "WEBHOOK_*.md"
+]
+
+# Дополнительные настройки для строгой типизации
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+strict_optional = true
+show_error_codes = true
+show_column_numbers = true
+show_error_context = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"

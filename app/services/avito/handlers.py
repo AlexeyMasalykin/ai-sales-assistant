@@ -20,10 +20,10 @@ class AvitoMessageHandlers:
 
         try:
             # Импортируем RAG engine внутри метода для избежания циклических импортов
-            from app.services.rag.answer import answer_engine
+            from app.services.rag.answer import answer_generator
 
             # Генерируем ответ через RAG систему
-            answer = await answer_engine.generate_answer(text)
+            answer = await answer_generator.generate_answer(text)
 
             # Если RAG не вернул ответ, используем fallback
             if not answer or answer.strip() == "":

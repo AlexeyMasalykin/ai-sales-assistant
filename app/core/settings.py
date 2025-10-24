@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
     session_ttl_days: int = 30
     max_concurrent_users: int = 100
+    
+    # PDF генерация
+    max_pdf_size_mb: int = Field(default=10)
+    pdf_output_dir: str = Field(default="data/documents")
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

@@ -6,10 +6,38 @@ from typing import Dict, Optional
 
 from loguru import logger
 from openai import AsyncOpenAI
+from typing import Optional
 
 from app.core.settings import settings
 from app.services.documents.templates import template_manager
 from app.services.rag.search import document_search
+from app.services.pdf.generator import pdf_generator
+
+
+def clean_html_from_markdown(html: str) -> str:
+    """
+    Удаляет markdown обёртки из HTML, если GPT их добавил.
+    
+    GPT иногда возвращает HTML в markdown блоках:
+    ```html
+    <html>...</html>
+    ```
+    
+    Эта функция очищает такие обёртки.
+    """
+    html = html.strip()
+    
+    # Удаляем открывающий блок
+    if html.startswith("```html"):
+        html = html[7:]
+    elif html.startswith("```"):
+        html = html[3:]
+    
+    # Удаляем закрывающий блок
+    if html.endswith("```"):
+        html = html[:-3]
+    
+    return html.strip()
 
 
 class DocumentGenerator:
@@ -76,7 +104,7 @@ class DocumentGenerator:
                 temperature=0.7,
                 max_tokens=2000,
             )
-            html = (response.choices[0].message.content or "").strip()
+            html = clean_html_from_markdown(response.choices[0].message.content or "")
             logger.info("Прайс-лист сгенерирован (%s символов)", len(html))
             return html
         except Exception as exc:  # noqa: BLE001
@@ -152,7 +180,7 @@ class DocumentGenerator:
                 temperature=0.8,
                 max_tokens=3000,
             )
-            html = (response.choices[0].message.content or "").strip()
+            html = clean_html_from_markdown(response.choices[0].message.content or "")
             logger.info("КП сгенерировано (%s символов)", len(html))
             return html
         except Exception as exc:  # noqa: BLE001
@@ -201,7 +229,7 @@ class DocumentGenerator:
                 temperature=0.3,
                 max_tokens=4000,
             )
-            html = (response.choices[0].message.content or "").strip()
+            html = clean_html_from_markdown(response.choices[0].message.content or "")
             logger.info("Черновик договора сгенерирован (%s символов)", len(html))
             return html
         except Exception as exc:  # noqa: BLE001
@@ -216,6 +244,53 @@ class DocumentGenerator:
         except Exception as exc:  # noqa: BLE001
             logger.error("Ошибка рендеринга шаблона %s: %s", template_name, exc)
             return "<p>Ошибка генерации документа</p>"
+
+    async def generate_price_list_pdf(
+        self, client_name: str, services: Optional[list[str]] = None
+    ) -> tuple[bytes, Optional[str]]:
+        """
+        Генерирует прайс-лист в формате PDF.
+
+        Returns:
+            Кортеж (PDF в байтах, путь к сохранённому файлу)
+        """
+        html = await self.generate_price_list(client_name, services)
+        pdf_bytes, file_path = pdf_generator.generate_with_template(
+            html, "price_list", client_name, save_to_disk=True
+        )
+        return pdf_bytes, str(file_path) if file_path else None
+
+    async def generate_commercial_proposal_pdf(
+        self, client_data: Dict
+    ) -> tuple[bytes, Optional[str]]:
+        """
+        Генерирует коммерческое предложение в формате PDF.
+
+        Returns:
+            Кортеж (PDF в байтах, путь к сохранённому файлу)
+        """
+        html = await self.generate_commercial_proposal(client_data)
+        client_name = client_data.get("name", "client")
+        pdf_bytes, file_path = pdf_generator.generate_with_template(
+            html, "commercial_proposal", client_name, save_to_disk=True
+        )
+        return pdf_bytes, str(file_path) if file_path else None
+
+    async def generate_contract_draft_pdf(
+        self, client_data: Dict
+    ) -> tuple[bytes, Optional[str]]:
+        """
+        Генерирует черновик договора в формате PDF.
+
+        Returns:
+            Кортеж (PDF в байтах, путь к сохранённому файлу)
+        """
+        html = await self.generate_contract_draft(client_data)
+        client_name = client_data.get("name", "client")
+        pdf_bytes, file_path = pdf_generator.generate_with_template(
+            html, "contract", client_name, save_to_disk=True
+        )
+        return pdf_bytes, str(file_path) if file_path else None
 
 
 # Singleton

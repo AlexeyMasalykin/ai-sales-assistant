@@ -16,7 +16,7 @@ from app.services.rag.embeddings import embeddings_service
 class DocumentLoader:
     """Загрузчик документов в векторную БД"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.docs_path = Path("documents/knowledge_base")
         self.async_session = async_sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False

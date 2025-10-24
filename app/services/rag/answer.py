@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from loguru import logger
 from openai import AsyncOpenAI
+from typing import Optional
 
 from app.core.settings import settings
 from app.services.rag.search import document_search
@@ -73,6 +74,9 @@ class AnswerGenerator:
             )
 
         answer = response.choices[0].message.content
+        if answer is None:
+            return "Извините, не удалось сгенерировать ответ."
+        
         # Гарантируем HTML форматирование для Telegram (требование теста)
         if "<b>" not in answer and "<i>" not in answer:
             answer = f"<b>{answer}</b>"
@@ -147,7 +151,11 @@ class AnswerGenerator:
                 "Попробуйте переформулировать вопрос."
             )
 
-        answer = response.choices[0].message.content.strip()
+        answer = response.choices[0].message.content
+        if answer is None:
+            return "Извините, не удалось сгенерировать ответ."
+        
+        answer = answer.strip()
 
         if "<b>" not in answer and "<i>" not in answer:
             answer = f"<b>{user_name}</b>, {answer}"
