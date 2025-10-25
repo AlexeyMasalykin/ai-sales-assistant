@@ -134,11 +134,24 @@ class TelegramHandlers:
 
         html = await document_generator.generate_commercial_proposal(client_data)
 
+        from app.services.telegram.lead_service import telegram_lead_service
+
+        lead_result = await telegram_lead_service.create_lead_from_conversation(
+            chat_id=chat_id,
+            user_name=user_name,
+            product_interest=services or "AI автоматизация",
+            conversation_context=f"Запрос коммерческого предложения для {company or 'компании'}",
+        )
+
+        if lead_result and lead_result.success:
+            logger.info("✅ Лид создан для %s: lead_id=%s", user_name, lead_result.lead_id)
+
         return (
             "<b>✅ Коммерческое предложение готово!</b>\n\n"
             f"Создано персональное КП для {company or 'вашей компании'}.\n\n"
             f"📄 Объём: ~{len(html)} символов\n"
             "💾 Отправлю полную версию файлом.\n\n"
+            "✅ <b>Заявка создана в CRM!</b> Менеджер свяжется в ближайшее время.\n\n"
             "Хотите обсудить детали? Напишите мне!"
         )
 
@@ -147,15 +160,26 @@ class TelegramHandlers:
         """Обработчик команды /contact."""
         logger.info("Запрос контактов от %s (chat_id=%s)", user_name, chat_id)
 
+        from app.services.telegram.lead_service import telegram_lead_service
+
+        lead_result = await telegram_lead_service.create_lead_from_conversation(
+            chat_id=chat_id,
+            user_name=user_name,
+            product_interest="Консультация",
+            conversation_context="Пользователь запросил контакты через /contact",
+        )
+
+        if lead_result and lead_result.success:
+            logger.info("✅ Лид создан для %s: lead_id=%s", user_name, lead_result.lead_id)
+
         return (
             "📞 <b>Связаться с нами</b>\n\n"
             "<b>Менеджер:</b> Алексей\n"
             "<b>Telegram:</b> @your_manager_username\n"
             "<b>Email:</b> sales@yourcompany.com\n"
             "<b>Телефон:</b> +7 (XXX) XXX-XX-XX\n\n"
-            "<b>Или напишите ваш вопрос прямо здесь</b> — "
-            "я передам менеджеру, и он свяжется с вами в течение часа!\n\n"
-            f"{user_name}, чем могу помочь? 😊"
+            "✅ <b>Заявка создана!</b> Менеджер свяжется с вами в течение часа.\n\n"
+            f"{user_name}, чем ещё могу помочь? 😊"
         )
 
     @staticmethod
@@ -221,6 +245,31 @@ class TelegramHandlers:
         await session_manager.add_message(session_id, "user", text)
 
         context = await session_manager.get_context_for_llm(session_id, limit=5)
+
+        from app.services.telegram.lead_service import telegram_lead_service
+
+        if telegram_lead_service.should_create_lead(text):
+            logger.info("🎯 Обнаружен триггер создания лида в сообщении от %s", user_name)
+
+            product_interest = telegram_lead_service.extract_product_from_context(context)
+            conversation_summary = "\n".join(
+                f"{msg.get('role')}: {msg.get('content', '')[:100]}"
+                for msg in context[-3:]
+            )
+
+            lead_result = await telegram_lead_service.create_lead_from_conversation(
+                chat_id=chat_id,
+                user_name=user_name,
+                product_interest=product_interest,
+                conversation_context=conversation_summary,
+            )
+
+            if lead_result and lead_result.success:
+                logger.info(
+                    "✅ Автоматический лид создан для %s: lead_id=%s",
+                    user_name,
+                    lead_result.lead_id,
+                )
 
         answer = await answer_generator.generate_answer_with_context(
             text,

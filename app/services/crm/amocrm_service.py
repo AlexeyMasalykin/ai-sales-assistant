@@ -11,7 +11,7 @@ class AmoCRMService:
     @staticmethod
     async def create_lead_from_conversation(
         request: LeadCreateRequest,
-        user_id: int | None = None,
+        user_id: str | int | None = None,
     ) -> LeadCreateResponse:
         """
         Создаёт лид и контакт в amoCRM из данных диалога.
@@ -23,10 +23,10 @@ class AmoCRMService:
         4. Добавить кастомные поля (источник, продукт)
         """
         logger.info(
-            "Создание лида для '%s' (источник: %s, user_id: %s)",
+            "Создание лида для '%s' (источник: %s, создатель: %s)",
             request.user_name,
             request.source,
-            user_id or "anonymous",
+            user_id or "service",
         )
 
         contact_id = None
@@ -44,30 +44,29 @@ class AmoCRMService:
                 # Продолжаем без контакта
 
         # Шаг 2: Подготовить кастомные поля
-        # ВРЕМЕННО ОТКЛЮЧЕНО - проверка базовой работы
-        # custom_fields = []
+        custom_fields = []
 
-        # # Источник лида (если есть кастомное поле)
-        # source_map = {
-        #     "telegram": "Telegram Bot",
-        #     "avito": "Avito Messenger",
-        #     "web": "Веб-чат",
-        # }
-        # custom_fields.append(
-        #     {
-        #         "field_code": "UTM_SOURCE",  # или ID вашего поля
-        #         "values": [{"value": source_map.get(request.source, "Неизвестно")}],
-        #     }
-        # )
+        # Источник лида
+        source_map = {
+            "telegram": "Telegram Bot",
+            "avito": "Avito Messenger",
+            "web": "Веб-чат",
+        }
+        custom_fields.append(
+            {
+                "field_id": 949903,
+                "values": [{"value": source_map.get(request.source, "Неизвестно")}],
+            }
+        )
 
-        # # Продукт (если указан)
-        # if request.product_interest:
-        #     custom_fields.append(
-        #         {
-        #             "field_code": "PRODUCT",  # или ID вашего поля
-        #             "values": [{"value": request.product_interest}],
-        #         }
-        #     )
+        # Продукт (если указан)
+        if request.product_interest:
+            custom_fields.append(
+                {
+                    "field_id": 949899,
+                    "values": [{"value": request.product_interest}],
+                }
+            )
 
         # Шаг 3: Создать лид
         lead_name = f"Заявка от {request.user_name}"
@@ -79,7 +78,7 @@ class AmoCRMService:
                 name=lead_name,
                 price=request.budget,
                 contact_id=contact_id,
-                # custom_fields=custom_fields,  # ВРЕМЕННО ОТКЛЮЧЕНО
+                custom_fields=custom_fields,
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("Ошибка создания лида: %s", str(exc))

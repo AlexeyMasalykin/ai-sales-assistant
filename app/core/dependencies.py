@@ -36,8 +36,30 @@ async def get_token_payload(
 async def get_current_user(
     payload: TokenPayload = Depends(get_token_payload),
 ) -> TokenPayload:
-    """Возвращает полезную нагрузку текущего пользователя."""
+    """
+    Возвращает полезную нагрузку текущего пользователя.
+
+    Поддерживает:
+    - Обычные пользовательские токены (sub: user_id)
+    - Сервисные токены (sub: service:service_name)
+    """
+    if isinstance(payload.sub, str) and payload.sub.startswith("service:"):
+        logger.debug(f"Аутентифицирован сервис: {payload.sub}")
+        return payload
+
     return payload
+
+
+def get_service_name(payload: TokenPayload) -> str | None:
+    """
+    Извлекает имя сервиса из токена.
+
+    Returns:
+        Имя сервиса (telegram_bot, avito_bot) или None если не сервисный токен
+    """
+    if isinstance(payload.sub, str) and payload.sub.startswith("service:"):
+        return payload.sub.replace("service:", "")
+    return None
 
 
 async def authorize_request(request: Request) -> TokenPayload:

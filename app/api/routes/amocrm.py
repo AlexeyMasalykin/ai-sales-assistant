@@ -1,8 +1,8 @@
 """API endpoints для amoCRM OAuth и управления."""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_service_name
 from app.integrations.amocrm.auth import auth_manager
 from app.integrations.amocrm.models import LeadCreateRequest
 from app.services.crm.amocrm_service import amocrm_service
@@ -40,39 +40,55 @@ async def oauth_callback(
 @router.post("/leads")
 async def create_lead_endpoint(
     request: LeadCreateRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user = Depends(get_current_user),  # type: ignore[assignment]
 ):
     """
     Создаёт лид в amoCRM из данных диалога.
 
-    Требует JWT авторизацию.
+    Требует JWT авторизацию (пользовательский или сервисный токен).
     Используется ботами (Telegram, Avito) для автоматического создания лидов.
     """
-    if isinstance(current_user, dict):
-        current_payload: dict | None = current_user
-    else:
-        try:
-            current_payload = current_user.model_dump()
-        except AttributeError:
-            current_payload = None
-
-    if current_payload and "id" not in current_payload and current_payload.get("sub"):
-        current_payload["id"] = current_payload["sub"]
-
     try:
+        if hasattr(current_user, "model_dump"):
+            payload_dict = current_user.model_dump()
+        elif isinstance(current_user, dict):
+            payload_dict = current_user
+        else:
+            payload_dict = {"id": getattr(current_user, "sub", None)}
+
+        service_name = get_service_name(current_user)
+        creator_id = service_name or payload_dict.get("id") or payload_dict.get("sub")
+
+        logger.info(
+            f"API запрос на создание лида от: {service_name or f'user_{creator_id}'}"
+        )
+
         result = await amocrm_service.create_lead_from_conversation(
             request,
-            user_id=current_payload.get("id") if current_payload else None,
+            user_id=creator_id,
         )
 
         if not result.success:
-            raise HTTPException(status_code=400, detail=result.message)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"400: {result.message}",
+            )
 
-        return result
+        return {
+            "lead_id": result.lead_id,
+            "contact_id": result.contact_id,
+            "success": True,
+            "message": result.message,
+        }
 
+    except HTTPException:
+        raise
     except Exception as exc:  # noqa: BLE001
-        logger.error("Ошибка создания лида: %s", str(exc))
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.error(f"Ошибка создания лида: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка при создании лида: {str(exc)}",
+        )
 
 
 @router.get("/auth/url")

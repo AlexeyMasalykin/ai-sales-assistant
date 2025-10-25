@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     # Telegram
     telegram_bot_token: SecretStr = SecretStr("test")
     telegram_webhook_url: str = "https://test"
+    telegram_bot_service_token: str = Field(
+        default="",
+        description="JWT токен для Telegram бота (TTL: 1 год)",
+    )
+    avito_bot_service_token: str = Field(
+        default="",
+        description="JWT токен для Avito бота (TTL: 1 год)",
+    )
 
     # amoCRM
     amocrm_subdomain: str = Field(default="", description="amoCRM subdomain")
@@ -92,6 +100,18 @@ class Settings(BaseSettings):
     # PDF генерация
     max_pdf_size_mb: int = Field(default=10)
     pdf_output_dir: str = Field(default="data/documents")
+    api_base_url: str = Field(
+        default="https://smmassistant.online",
+        description="Базовый URL API для внутренних запросов",
+    )
+    telegram_lead_cache_ttl: int = Field(
+        default=86_400,
+        description="TTL кэша созданных Telegram лидов (секунды)",
+    )
+    avito_lead_cache_ttl: int = Field(
+        default=86_400,
+        description="TTL кэша созданных Avito лидов (секунды)",
+    )
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

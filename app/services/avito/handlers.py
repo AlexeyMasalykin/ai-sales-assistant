@@ -18,6 +18,23 @@ class AvitoMessageHandlers:
             text[:80],
         )
 
+        from app.services.avito.lead_service import avito_lead_service
+
+        if avito_lead_service.should_create_lead(text):
+            logger.info("🎯 Обнаружен триггер Avito лида в чате %s", chat_id)
+            product_interest = avito_lead_service.extract_product_from_text(text)
+            user_name = f"Avito User {author_id[:8]}"
+
+            lead_result = await avito_lead_service.create_lead_from_conversation(
+                chat_id=chat_id,
+                user_name=user_name,
+                product_interest=product_interest,
+                conversation_context=text[:200],
+            )
+
+            if lead_result and lead_result.success:
+                logger.info("✅ Автоматический Avito лид создан: lead_id=%s", lead_result.lead_id)
+
         try:
             # Импортируем RAG engine внутри метода для избежания циклических импортов
             from app.services.rag.answer import answer_generator

@@ -66,6 +66,12 @@ class AmoCRMClient:
 
         if contact_id:
             payload["_embedded"] = {"contacts": [{"id": contact_id}]}
+            
+        import json
+        logger.info(f"=== PAYLOAD ДЛЯ AMOCRM ===")
+        logger.info(f"Full payload: {json.dumps([payload], indent=2, ensure_ascii=False)}")
+        logger.info(f"custom_fields_values: {payload.get('custom_fields_values')}")
+        logger.info(f"=========================")
 
         response = await self._request("POST", "/leads", json=[payload])
 
