@@ -12,7 +12,7 @@ from app.core.settings import settings
 from app.core.pricing_rules import get_all_tariffs, ProductType
 from app.services.documents.templates import template_manager
 from app.services.rag.search import document_search
-from app.services.pdf.generator import pdf_generator
+#from app.services.pdf.generator import pdf_generator
 
 
 def clean_html_from_markdown(html: str) -> str:

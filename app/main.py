@@ -40,21 +40,9 @@ UNPROTECTED_PATHS = {
     "/openapi.json",
     "/api/v1/webhooks/avito/messages",
     "/api/v1/webhooks/telegram",
+    "/api/v1/amocrm/auth/url",
+    "/api/v1/amocrm/callback",
 }
-
-# Паттерны для веб-чата (проверяются отдельно)
-CHAT_PATH_PATTERNS = [
-    "/api/v1/chat/sessions",
-    "/api/v1/chat/messages",
-    "/api/v1/chat/ws/",
-]
-
-# Паттерны для веб-чата (проверяются отдельно)
-CHAT_PATH_PATTERNS = [
-    "/api/v1/chat/sessions",
-    "/api/v1/chat/messages",
-    "/api/v1/chat/ws/",
-]
 
 # Паттерны для веб-чата (проверяются отдельно)
 CHAT_PATH_PATTERNS = [
@@ -192,7 +180,10 @@ async def bootstrap_runtime() -> None:
         )
     await telegram_bot.start()
     # Загружаем документы базы знаний
-    await document_loader.load_all_documents()
+    # TODO: Загрузка документов занимает много времени при старте
+    # Рекомендуется запускать вручную через API или CLI команду
+    # await document_loader.load_all_documents()
+    logger.info("Загрузка документов базы знаний пропущена при старте")
 
 
 async def shutdown_runtime() -> None:

@@ -52,8 +52,13 @@ class Settings(BaseSettings):
     telegram_webhook_url: str = "https://test"
 
     # amoCRM
-    amocrm_domain: str = "test"
-    amocrm_access_token: SecretStr = SecretStr("test")
+    amocrm_subdomain: str = Field(default="", description="amoCRM subdomain")
+    amocrm_client_id: str = Field(default="", description="amoCRM Client ID")
+    amocrm_client_secret: SecretStr = Field(default="", description="amoCRM Client Secret")
+    amocrm_redirect_uri: str = Field(
+        default="https://smmassistant.online/api/v1/amocrm/callback",
+        description="amoCRM OAuth redirect URI",
+    )
 
     # Google Calendar
     google_calendar_credentials: str = "{}"

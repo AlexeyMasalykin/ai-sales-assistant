@@ -8,6 +8,7 @@ from app.api.routes.avito import router as avito_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.health import router as health_router
 from app.api.routes.telegram import router as telegram_router
+from app.api.routes import amocrm
 
 
 def register_routes(application: FastAPI) -> None:
@@ -23,5 +24,9 @@ def register_routes(application: FastAPI) -> None:
     )
     application.include_router(
         chat_router,
+        prefix="/api/v1",
+    )
+    application.include_router(
+        amocrm.router,
         prefix="/api/v1",
     )

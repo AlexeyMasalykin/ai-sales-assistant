@@ -2,8 +2,10 @@
 
 from pathlib import Path
 from typing import Optional
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from dotenv import load_dotenv
+from pydantic import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Загружаем .env ПЕРЕД импортом Settings
 load_dotenv(override=True)
@@ -46,6 +48,12 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: Optional[str] = "dev-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440
+
+    # amoCRM
+    amocrm_subdomain: str = ""
+    amocrm_client_id: str = ""
+    amocrm_client_secret: SecretStr = SecretStr("")
+    amocrm_redirect_uri: str = "https://smmassistant.online/api/v1/amocrm/callback"
 
     # App
     ENVIRONMENT: str = "development"
