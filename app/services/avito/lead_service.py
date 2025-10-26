@@ -475,6 +475,97 @@ class AvitoLeadService:
             logger.error("Ошибка загрузки Avito истории из amoCRM: %s", exc)
             return ""
 
+    async def contact_exists(self, chat_id: str) -> bool:
+        """Проверяет наличие контакта для Avito чата."""
+        from app.integrations.amocrm.client import get_amocrm_client
+
+        try:
+            amocrm_client = await get_amocrm_client()
+            search_phone = f"avito_user_{chat_id[:15]}"
+            contact_id = await amocrm_client.find_contact_by_phone(search_phone)
+
+            if contact_id:
+                logger.debug(
+                    "✅ Контакт существует для Avito чата %s: %s",
+                    chat_id,
+                    contact_id,
+                )
+                return True
+
+            logger.debug(
+                "Avito: контакт не найден для chat_id=%s (phone=%s)",
+                chat_id,
+                search_phone,
+            )
+            return False
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Ошибка проверки контакта Avito: %s", exc)
+            return False
+
+    async def update_lead_from_message(self, chat_id: str, message_text: str) -> None:
+        """Обновляет лид по новому сообщению: статус и заметку."""
+        from app.integrations.amocrm.client import get_amocrm_client
+        from app.services.crm.lead_qualifier import lead_qualifier
+
+        try:
+            amocrm_client = await get_amocrm_client()
+            search_phone = f"avito_user_{chat_id[:15]}"
+            contact_id = await amocrm_client.find_contact_by_phone(search_phone)
+
+            if not contact_id:
+                logger.debug(
+                    "Avito: контакт не найден для обновления chat_id=%s", chat_id
+                )
+                return
+
+            leads = await amocrm_client.find_leads_by_contact(
+                contact_id=contact_id,
+                pipeline_id=lead_qualifier.PIPELINE_ID,
+            )
+
+            if not leads:
+                logger.debug(
+                    "Avito: активные лиды для обновления не найдены chat_id=%s", chat_id
+                )
+                return
+
+            lead = leads[0]
+            lead_id = lead["id"]
+            current_status_id = lead["status_id"]
+
+            qualification = await lead_qualifier.qualify_lead(
+                conversation_history=message_text,
+                user_message=message_text,
+                source="avito",
+            )
+
+            if lead_qualifier.should_update_stage(
+                current_status_id=current_status_id,
+                new_status_id=qualification.status_id,
+            ):
+                await amocrm_client.update_lead_status(
+                    lead_id=lead_id,
+                    status_id=qualification.status_id,
+                    pipeline_id=lead_qualifier.PIPELINE_ID,
+                )
+
+            await self.save_conversation_to_amocrm(
+                lead_id=lead_id,
+                user_message=message_text,
+                bot_response="",
+                qualification=qualification,
+            )
+
+            logger.info(
+                "✅ Обновлён Avito лид %s: %s",
+                lead_id,
+                qualification.stage,
+            )
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Ошибка обновления Avito лида: %s", exc)
+
     def should_create_lead(self, text: str) -> bool:
         """Определяет, содержит ли сообщение триггеры для создания лида."""
         text_lower = text.lower()

@@ -8,6 +8,7 @@ from typing import Any
 
 from loguru import logger
 
+from app.core.redis_client import get_redis_client
 from app.core.settings import settings
 from app.services.avito.client import AvitoAPIClient
 from app.services.avito.handlers import AvitoMessageHandlers
@@ -53,7 +54,8 @@ class AvitoWebhookHandler:
             logger.debug("Обработка Avito уже активна.")
             return
         self._stop_event.clear()
-        for idx in range(settings.avito_processing_workers):
+        num_workers = 1  # Было 3
+        for idx in range(num_workers):
             task = asyncio.create_task(
                 self._worker_loop(idx),
                 name=f"avito-worker-{idx}",
@@ -93,13 +95,13 @@ class AvitoWebhookHandler:
 
     async def _handle_message(self, webhook_data: dict[str, Any]) -> None:
         """Определяет тип события и выполняет соответствующий обработчик."""
-        event_type = webhook_data.get("event_type", "")
-        payload = webhook_data.get("payload") or webhook_data
+        payload = webhook_data.get("payload", {})
+        event_type = payload.get("type", "")
+        message_value = payload.get("value", {})
         logger.debug("Обработка события Avito типа %s.", event_type)
 
-        if event_type == "message.new":
-            message = payload.get("message") or {}
-            await self._handle_new_message(message)
+        if event_type == "message":
+            await self._handle_new_message(message_value)
         elif event_type == "message.read":
             logger.info("Avito: сообщение отмечено как прочитанное: {}", payload)
         elif event_type:
@@ -109,16 +111,44 @@ class AvitoWebhookHandler:
 
     async def _handle_new_message(self, message_data: dict[str, Any]) -> None:
         """Обрабатывает новое входящее сообщение."""
+        message_id = message_data.get("id")
+        if not message_id:
+            logger.warning("Avito: входящее сообщение без id пропущено.")
+            return
+
+        redis = await get_redis_client()
+        cache_key = f"avito:processed_message:{message_id}"
+        if await redis.get(cache_key):
+            logger.info("Avito: сообщение %s уже обработано, пропускаем.", message_id)
+            return
+        await redis.setex(cache_key, 3600, "1")
+
         chat_id = message_data.get("chat_id")
-        author_id = (message_data.get("author_id") or "").strip()
+        author_raw = message_data.get("author_id")
+        user_id = message_data.get("user_id")
+        if author_raw == user_id and author_raw is not None:
+            logger.info(
+                "Avito: пропускаем своё сообщение (author_id=%s == user_id=%s).",
+                author_raw,
+                user_id,
+            )
+            return
+
+        if author_raw is None:
+            logger.warning("Avito: сообщение без author_id пропущено.")
+            return
+
+        author_id = str(author_raw).strip()
         message_type = message_data.get("type", "text")
-        text = (message_data.get("text") or "").strip()
+        content = message_data.get("content", {})
+        text = (content.get("text") or "").strip()
 
         logger.info(
-            "Avito: новое сообщение chat_id=%s author_id=%s type=%s",
+            "Avito: обработка сообщения chat_id=%s author_id=%s type=%s text=%s",
             chat_id,
             author_id,
             message_type,
+            text[:50] + "..." if len(text) > 50 else text,
         )
         logger.debug("Avito: содержимое сообщения %s", message_data)
 
@@ -126,8 +156,12 @@ class AvitoWebhookHandler:
             logger.error("Avito: сообщение без chat_id пропущено.")
             return
 
+        if message_type == "text" and not text:
+            logger.warning("Avito: пустое сообщение от %s", author_id)
+            return
+
         response: str | None = None
-        if message_type == "text" and text:
+        if message_type == "text":
             response = await self._generate_response(text, chat_id)
         elif message_type == "image":
             response = await AvitoMessageHandlers.handle_image_message(

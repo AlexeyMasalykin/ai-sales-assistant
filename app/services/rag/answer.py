@@ -101,6 +101,7 @@ class AnswerGenerator:
         user_name: str,
         context: Sequence[Dict[str, str]] | None = None,
         amocrm_history: str | None = None,
+        platform: str = "telegram",
     ) -> str:
         """Формирует ответ, учитывая историю переписки."""
         if not self.client:
@@ -124,6 +125,13 @@ class AnswerGenerator:
             f"Документ: {doc['title']}\n{doc['content'][:500]}" for doc in documents
         )
         
+        if platform == "telegram":
+            formatting_instruction = "Используй HTML теги: <b>, <i>, <a>"
+        elif platform == "avito":
+            formatting_instruction = "Не используй HTML теги, только чистый текст"
+        else:
+            formatting_instruction = "Используй HTML теги: <b>, <i>, <a>"
+
         system_prompt = (
             f"Ты — AI Sales Assistant компании, "
             f"специализирующейся на AI-решениях.\n\n"
@@ -146,7 +154,7 @@ class AnswerGenerator:
             f"ПРАВИЛА:\n"
             f"- Отвечай кратко и по делу\n"
             f"- Обращайся к клиенту по имени: {user_name}\n"
-            f"- Используй HTML теги: <b>, <i>, <a>\n"
+            f"- {formatting_instruction}\n"
             f"- Если не знаешь — предложи связаться с менеджером\n"
             f"- Сохраняй контекст предыдущих сообщений\n"
         )
@@ -195,7 +203,7 @@ class AnswerGenerator:
             return "Извините, не удалось сгенерировать ответ."
         answer = str(answer_raw).strip()
 
-        if "<b>" not in answer and "<i>" not in answer:
+        if platform != "avito" and "<b>" not in answer and "<i>" not in answer:
             answer = f"<b>{user_name}</b>, {answer}"
 
         logger.info("Ответ с контекстом сгенерирован (%d символов)", len(answer))
