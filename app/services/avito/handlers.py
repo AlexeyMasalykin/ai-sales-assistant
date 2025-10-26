@@ -20,6 +20,18 @@ class AvitoMessageHandlers:
 
         from app.services.avito.lead_service import avito_lead_service
 
+        amocrm_history = await avito_lead_service.get_conversation_history_from_amocrm(
+            chat_id
+        )
+        if amocrm_history:
+            logger.info(
+                "📚 Загружена Avito история из amoCRM для chat_id=%s (%s символов)",
+                chat_id,
+                len(amocrm_history),
+            )
+
+        lead_result = None
+
         if avito_lead_service.should_create_lead(text):
             logger.info("🎯 Обнаружен триггер Avito лида в чате %s", chat_id)
             product_interest = avito_lead_service.extract_product_from_text(text)
@@ -29,43 +41,60 @@ class AvitoMessageHandlers:
                 chat_id=chat_id,
                 user_name=user_name,
                 product_interest=product_interest,
-                conversation_context=text[:200],
+                conversation_context=(
+                    (f"История из amoCRM:\n{amocrm_history}\n\n" if amocrm_history else "")
+                    + text
+                )[:500],
             )
 
             if lead_result and lead_result.success:
                 logger.info("✅ Автоматический Avito лид создан: lead_id=%s", lead_result.lead_id)
 
+        answer: str
+
         try:
-            # Импортируем RAG engine внутри метода для избежания циклических импортов
             from app.services.rag.answer import answer_generator
 
-            # Генерируем ответ через RAG систему
             if answer_generator.client is None:
                 logger.debug(
-                    "Avito: RAG недоступен (клиент LLM отсутствует), "
-                    "используем fallback."
+                    "Avito: RAG недоступен (клиент LLM отсутствует), используем fallback."
                 )
-                return AvitoMessageHandlers._get_fallback_response(text)
-
-            answer = await answer_generator.generate_answer(text)
-
-            # Если RAG не вернул ответ, используем fallback
-            if not answer or answer.strip() == "":
-                logger.warning(
-                    "RAG не вернул ответ для чата %s, используем fallback", chat_id
+                answer = AvitoMessageHandlers._get_fallback_response(text)
+            else:
+                # Используем generate_answer_with_context для передачи истории отдельно
+                user_name = f"Avito User {author_id[:8]}"
+                generated_answer = await answer_generator.generate_answer_with_context(
+                    question=text,  # Чистый вопрос без истории
+                    user_name=user_name,
+                    context=None,  # У Avito пока нет сохраненного контекста сессии
+                    amocrm_history=amocrm_history if amocrm_history else None,
                 )
-                return AvitoMessageHandlers._get_fallback_response(text)
+                if not generated_answer or generated_answer.strip() == "":
+                    logger.warning(
+                        "RAG не вернул ответ для чата %s, используем fallback", chat_id
+                    )
+                    answer = AvitoMessageHandlers._get_fallback_response(text)
+                else:
+                    answer = generated_answer
+                    logger.info(
+                        "RAG ответ сгенерирован для чата %s (длина: %s)",
+                        chat_id,
+                        len(answer),
+                    )
 
-            logger.info(
-                "RAG ответ сгенерирован для чата %s (длина: %s)", chat_id, len(answer)
-            )
-            return answer
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Ошибка генерации ответа через RAG для чата %s: %s", chat_id, exc)
+            answer = AvitoMessageHandlers._get_fallback_response(text)
 
-        except Exception as e:
-            logger.error(
-                "Ошибка генерации ответа через RAG для чата %s: %s", chat_id, e
+        if lead_result and lead_result.success and lead_result.lead_id:
+            await avito_lead_service.save_conversation_to_amocrm(
+                lead_id=lead_result.lead_id,
+                user_message=text,
+                bot_response=answer,
+                qualification=None,
             )
-            return AvitoMessageHandlers._get_fallback_response(text)
+
+        return answer
 
     @staticmethod
     def _get_fallback_response(text: str) -> str:

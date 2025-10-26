@@ -67,6 +67,8 @@ class LeadCreateRequest(BaseModel):
     product_interest: str | None = None  # AI Manager/Lawyer/Analyst
     budget: int | None = None
     conversation_history: str | None = None
+    pipeline_id: int | None = None
+    status_id: int | None = None
     metadata: dict | None = None
 
 

@@ -248,6 +248,21 @@ class TelegramHandlers:
 
         from app.services.telegram.lead_service import telegram_lead_service
 
+        amocrm_history = await telegram_lead_service.get_conversation_history_from_amocrm(
+            chat_id
+        )
+        if amocrm_history:
+            logger.info(
+                "📚 Загружена история из amoCRM для chat_id=%s (%s символов)",
+                chat_id,
+                len(amocrm_history),
+            )
+            logger.debug("Содержимое истории (первые 300 символов): %s", amocrm_history[:300])
+        else:
+            logger.info("⚠️ История из amoCRM пустая для chat_id=%s", chat_id)
+
+        lead_result = None
+
         if telegram_lead_service.should_create_lead(text):
             logger.info("🎯 Обнаружен триггер создания лида в сообщении от %s", user_name)
 
@@ -256,12 +271,14 @@ class TelegramHandlers:
                 f"{msg.get('role')}: {msg.get('content', '')[:100]}"
                 for msg in context[-3:]
             )
-
+            history_prefix = (
+                f"История из amoCRM:\n{amocrm_history}\n\n" if amocrm_history else ""
+            )
             lead_result = await telegram_lead_service.create_lead_from_conversation(
                 chat_id=chat_id,
                 user_name=user_name,
                 product_interest=product_interest,
-                conversation_context=conversation_summary,
+                conversation_context=(history_prefix + conversation_summary)[:1000],
             )
 
             if lead_result and lead_result.success:
@@ -271,11 +288,21 @@ class TelegramHandlers:
                     lead_result.lead_id,
                 )
 
+        # Передаём историю отдельным параметром вместо добавления в query
         answer = await answer_generator.generate_answer_with_context(
-            text,
-            user_name,
-            context,
+            question=text,  # Чистый вопрос без истории
+            user_name=user_name,
+            context=context,
+            amocrm_history=amocrm_history if amocrm_history else None,
         )
+
+        if lead_result and lead_result.success and lead_result.lead_id:
+            await telegram_lead_service.save_conversation_to_amocrm(
+                lead_id=lead_result.lead_id,
+                user_message=text,
+                bot_response=answer,
+                qualification=None,
+            )
 
         await session_manager.add_message(session_id, "assistant", answer)
 

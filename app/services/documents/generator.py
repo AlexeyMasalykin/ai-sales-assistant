@@ -53,7 +53,7 @@ class DocumentGenerator:
             self.client = None
             logger.warning("OpenAI API key не настроен")
 
-        self.model = "gpt-4o-mini"
+        self.model = settings.openai_model
 
     async def generate_price_list(
         self, client_name: str, services: Optional[list[str]] = None

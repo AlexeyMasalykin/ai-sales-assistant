@@ -8,7 +8,7 @@
 | 2 · US1 · Avito | 5 / 5 | ✅ | Клиент, webhooks, автоответы и синхронизация объявлений реализованы |
 | 3 · US2 · Telegram & веб-чат | 5 / 5 | ✅ | Telegram бот, веб-канал и хранение контекста в Redis работают |
 | 4 · US3 · RAG, ценообразование, документы | 6 / 8 | ⚠️ | RAG и калькулятор готовы, но нет PDF-сервиса и fallback LLM |
-| 5 · US4 · CRM, календарь, платежи | 0 / 5 | ⛔️ | Интеграции amoCRM, Google Calendar, ЮKassa и e-mail не начинались |
+| 5 · US4 · CRM, календарь, платежи | 3 / 7 | ⚠️ | amoCRM + лиды из Telegram/Avito работают, календарь/платежи/email ещё в очереди |
 | 6 · US5 · Безопасность и мониторинг | 1 / 5 | ⚠️ | Подключён Sentry, но нет шифрования, подписи webhook и retry-политики |
 | 7 · Финализация и полировка | 0 / 3 | ⚠️ | README обновлён частично, архитектурная документация и отчёты отсутствуют |
 
@@ -161,11 +161,33 @@
 ---
 
 ## Фаза 5 · Пользовательская история US4 — CRM, календарь, оплата
-- ⛔️ T029 · Клиент amoCRM: отсутствуют директории `app/integrations/amocrm/`, `app/services/crm/`.
-- ⛔️ T030 · Интеграция Google Calendar: отсутствуют `app/integrations/google_calendar/`, `app/services/calendar/`.
-- ⛔️ T031 · ЮKassa: нет `app/integrations/yookassa/`, `app/services/payments/`.
-- ⛔️ T032 · E-mail уведомления: нет SMTP-клиента и шаблонов `templates/email/`.
-- ⛔️ T033 · Сводный интеграционный тест `tests/integration/test_sales_pipeline.py` отсутствует.
+
+#### ✅ T029 · Клиент amoCRM и OAuth
+- Создан модуль `app/integrations/amocrm/` с Pydantic-моделями, OAuth-менеджером (`auth.py`), HTTP-клиентом (`client.py`) и сервисом `app/services/crm/amocrm_service.py`.
+- Эндпоинты FastAPI `/api/v1/amocrm` обрабатывают OAuth callback, выдают auth URL и принимают заявки на создание лидов; токены кэшируются в Redis, реализованы retries, обработка 401/429 и логирование.
+- Добавлены интеграционные тесты `tests/integration/test_amocrm.py`, а также настройки (`amocrm_*`) и глобальный роутер.
+
+#### ✅ T030 · Интеграция Telegram бота с amoCRM
+- `app/services/telegram/lead_service.py` создаёт лиды через сервисный JWT, извлекает интерес к продукту из контекста и предотвращает дубли через Redis (TTL настраивается через `telegram_lead_cache_ttl`).
+- Обработчики `/contact`, `/proposal` и текстовых сообщений (`app/services/telegram/handlers.py`) вызывают сервис при триггерах, логируют успешные лиды и добавляют сводку переписки в примечание amoCRM.
+- Сервисные токены генерируются скриптом `scripts/generate_service_tokens.py`, а эндпоинт `/api/v1/amocrm/leads` защищён JWT (включая сервисные payload’ы).
+
+#### ✅ T031 · Интеграция Avito бота с amoCRM
+- `app/services/avito/lead_service.py` отправляет лиды в amoCRM по сервисному токену Avito, поддерживает кэширование лидов на 24 часа (`avito_lead_cache_ttl`) и определяет продукт по ключевым словам.
+- `AvitoMessageHandlers.handle_text_message()` теперь ищет триггеры горячего интереса, вызывает сервис и логирует результаты до генерации ответа RAG.
+- Для отсутствующих контактов используется placeholder `avito_user_{chat_id}`, чтобы лид содержал источник и базовую идентификацию.
+
+#### ⛔️ T032 · Интеграция Google Calendar
+- Требуются клиенты `app/integrations/google_calendar/` и сервисы бронирования слотов `app/services/calendar/`, webhook подтверждений и обновление Telegram/Avito уведомлений.
+
+#### ⛔️ T033 · Подсистема платежей (ЮKassa)
+- Не реализованы `app/integrations/yookassa/`, генерация платёжных ссылок, контроль `MAX_PAYMENT_ATTEMPTS` и обработка статусов оплаты.
+
+#### ⛔️ E-mail уведомления менеджерам и клиентам
+- Отсутствует SMTP‑клиент, шаблоны `templates/email/` и механика отправки писем при создании лида/оплате/бронировании.
+
+#### ⛔️ Сводный интеграционный тест продаж
+- Нет `tests/integration/test_sales_pipeline.py`, покрывающего сценарий Avito/Telegram → amoCRM → Calendar → ЮKassa.
 
 ---
 
@@ -192,5 +214,3 @@
 - План и спецификация фич находятся в `specs/001-ai-sales-assistant/spec.md` и `plan.md`, а текущий прогресс отслеживался ранее в `PROJECT_STATUS.md`.
 
 ---
-
-

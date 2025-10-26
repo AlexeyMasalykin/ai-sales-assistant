@@ -29,7 +29,14 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: Literal["openai", "anthropic", "openrouter"] = "openai"
-    openai_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = Field(
+        default=None,
+        description="OpenAI API ключ для LLM квалификации лидов",
+    )
+    openai_model: str = Field(
+        default="gpt-4o",
+        description="Модель OpenAI, используемая для генерации ответов/документов",
+    )
     anthropic_api_key: SecretStr | None = None
 
     # Avito

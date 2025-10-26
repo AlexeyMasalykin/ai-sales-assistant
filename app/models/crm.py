@@ -10,6 +10,9 @@ from app.integrations.amocrm.models import (
 class LeadCreateRequest(AmoLeadCreateRequest):
     """Переиспользуемая модель запроса создания лида."""
 
+    pipeline_id: int | None = None
+    status_id: int | None = None
+
 
 class LeadCreateResult(LeadCreateResponse):
     """Результат создания лида в amoCRM."""

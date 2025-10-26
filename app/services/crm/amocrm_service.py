@@ -79,6 +79,8 @@ class AmoCRMService:
                 price=request.budget,
                 contact_id=contact_id,
                 custom_fields=custom_fields,
+                pipeline_id=request.pipeline_id,
+                status_id=request.status_id,
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("Ошибка создания лида: %s", str(exc))
