@@ -59,3 +59,8 @@ loguru/
 INSTALL_PDF.md
 T025_IMPLEMENTATION.md
 WEBHOOK_TEST_RESULTS.md
+
+# Environment files with secrets
+.env
+.env.*
+*.env
