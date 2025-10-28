@@ -124,11 +124,27 @@ class AvitoLeadService:
         try:
             amocrm_client = await get_amocrm_client()
 
-            note_parts = [f"👤 Пользователь: {user_message}"]
+            # Проверяем, это полный контекст с саммари или обычное сообщение
+            is_full_context = (
+                "САММАРИ" in user_message or 
+                "РЕКОМЕНДАЦИИ" in user_message or
+                len(user_message) > 1000
+            )
+
+            if is_full_context:
+                # Полный контекст с саммари и рекомендациями
+                note_parts = [
+                    "📋 ИСТОРИЯ ДИАЛОГА И АНАЛИЗ\n",
+                    "="*50,
+                    user_message
+                ]
+            else:
+                # Обычное сообщение
+                note_parts = [f"👤 Пользователь: {user_message}"]
 
             if qualification:
                 note_parts.append(
-                    f"\n📊 Квалификация: {qualification.stage} "
+                    f"\n\n📊 Квалификация: {qualification.stage} "
                     f"({qualification.temperature}, confidence: {qualification.confidence:.2f})"
                 )
                 if getattr(qualification, "reasoning", None):
@@ -170,11 +186,22 @@ class AvitoLeadService:
         phone: str | None = None,
         email: str | None = None,
         product_interest: str | None = None,
+        pain_point: str | None = None,
         budget: int | None = None,
         conversation_context: str = "",
     ) -> LeadCreateResult | None:
         """
         Создаёт новый лид или обновляет существующий диалог из Avito.
+
+        Args:
+            chat_id: ID чата Avito
+            user_name: Имя клиента
+            phone: Телефон клиента
+            email: Email клиента
+            product_interest: Интересующий продукт
+            pain_point: Боль/проблема клиента
+            budget: Бюджет
+            conversation_context: Контекст диалога (история + саммари)
 
         Шаги:
         1. Квалифицируем диалог
@@ -225,7 +252,39 @@ class AvitoLeadService:
             )
 
             if leads:
-                existing_lead = leads[0]
+                logger.info(
+                    "✅ Найдено %s активных лидов для контакта, фильтруем по источнику Avito",
+                    len(leads),
+                )
+
+                # Фильтруем лиды по источнику (Avito)
+                avito_lead = None
+                for lead in leads:
+                    custom_fields = lead.get("custom_fields_values", [])
+                    for field in custom_fields:
+                        if field.get("field_name") == "Источник" or field.get("field_code") == "UTM_SOURCE":
+                            values = field.get("values", [])
+                            for value in values:
+                                if "avito" in value.get("value", "").lower():
+                                    avito_lead = lead
+                                    logger.info(
+                                        "✅ Найден Avito лид для обновления в create_or_update: lead_id=%s",
+                                        lead["id"],
+                                    )
+                                    break
+                            if avito_lead:
+                                break
+                    if avito_lead:
+                        break
+
+                if not avito_lead:
+                    logger.warning(
+                        "⚠️ Avito лид не найден среди %s лидов в create_or_update, используем первый",
+                        len(leads),
+                    )
+                    avito_lead = leads[0]
+
+                existing_lead = avito_lead
                 lead_id = existing_lead["id"]
                 current_status_id = existing_lead["status_id"]
 
@@ -254,9 +313,10 @@ class AvitoLeadService:
                             qualification.stage,
                             qualification.status_id,
                         )
+                        # Сохраняем ПОЛНУЮ историю с саммари и рекомендациями
                         await self.save_conversation_to_amocrm(
                             lead_id=lead_id,
-                            user_message=last_message,
+                            user_message=conversation_context,  # Полный контекст!
                             bot_response=None,
                             qualification=qualification,
                         )
@@ -327,9 +387,10 @@ class AvitoLeadService:
                     qualification.stage,
                 )
                 if lead_id:
+                    # Сохраняем ПОЛНУЮ историю с саммари и рекомендациями
                     await self.save_conversation_to_amocrm(
                         lead_id=int(lead_id),
-                        user_message=last_message,
+                        user_message=conversation_context,  # Полный контекст!
                         bot_response=None,
                         qualification=qualification,
                     )
@@ -405,7 +466,60 @@ class AvitoLeadService:
                 logger.debug("Avito лиды для contact_id=%s не найдены", contact_id)
                 return ""
 
-            lead_id = leads[0]["id"]
+            logger.info(
+                "✅ Найдено %s активных лидов для контакта, фильтруем по источнику Avito",
+                len(leads),
+            )
+
+            # Фильтруем лиды по источнику (Avito)
+            avito_lead = None
+            for idx, lead in enumerate(leads):
+                lead_id = lead.get("id")
+                logger.debug("🔍 Проверяем лид %s (lead_id=%s)", idx + 1, lead_id)
+                
+                custom_fields = lead.get("custom_fields_values", [])
+                logger.debug("🔍 У лида %s найдено %s custom_fields", lead_id, len(custom_fields))
+                
+                for field in custom_fields:
+                    field_name = field.get("field_name")
+                    field_code = field.get("field_code")
+                    logger.debug(
+                        "🔍 Field: name='%s', code='%s'",
+                        field_name,
+                        field_code,
+                    )
+                    
+                    if field_name == "Источник" or field_code == "UTM_SOURCE":
+                        values = field.get("values", [])
+                        logger.debug("🔍 Поле 'Источник' найдено! Values: %s", values)
+                        
+                        for value in values:
+                            source_value = value.get("value", "")
+                            logger.debug("🔍 Source value: '%s'", source_value)
+                            
+                            if "avito" in source_value.lower():
+                                avito_lead = lead
+                                logger.info(
+                                    "✅ Найден Avito лид для истории: lead_id=%s",
+                                    lead["id"],
+                                )
+                                break
+                        if avito_lead:
+                            break
+                if avito_lead:
+                    break
+
+            if not avito_lead:
+                logger.warning(
+                    "⚠️ Avito лид не найден среди %s лидов, используем первый",
+                    len(leads),
+                )
+                logger.warning("⚠️ Все лиды: %s", [{"id": l.get("id"), "name": l.get("name")} for l in leads])
+                avito_lead = leads[0]
+
+            lead_id = avito_lead["id"]
+            logger.info("📖 Загружаем историю из Avito лида: lead_id=%s", lead_id)
+            
             notes = await amocrm_client.get_lead_notes(lead_id=lead_id, limit=10)
 
             if not notes:
@@ -476,31 +590,66 @@ class AvitoLeadService:
             return ""
 
     async def contact_exists(self, chat_id: str) -> bool:
-        """Проверяет наличие контакта для Avito чата."""
+        """Проверяет наличие АКТИВНОГО AVITO ЛИДА для чата (не просто контакта!)."""
         from app.integrations.amocrm.client import get_amocrm_client
+        from app.services.crm.lead_qualifier import lead_qualifier
 
         try:
             amocrm_client = await get_amocrm_client()
-            search_phone = f"avito_user_{chat_id[:15]}"
+            # ВАЖНО: Используем первые 8 символов как в create_lead_from_conversation
+            search_phone = f"avito_user_{chat_id[:8]}"
+            
+            logger.info("🔍 Проверка существования AVITO ЛИДА для chat_id=%s", chat_id)
+            logger.info("🔍 Поиск по телефону: '%s'", search_phone)
+            
             contact_id = await amocrm_client.find_contact_by_phone(search_phone)
+            
+            logger.info("🔍 Результат поиска контакта: contact_id=%s", contact_id)
 
-            if contact_id:
-                logger.debug(
-                    "✅ Контакт существует для Avito чата %s: %s",
+            if not contact_id:
+                logger.info(
+                    "❌ Контакт НЕ существует для Avito чата %s (phone=%s)",
                     chat_id,
-                    contact_id,
+                    search_phone,
                 )
-                return True
+                return False
 
-            logger.debug(
-                "Avito: контакт не найден для chat_id=%s (phone=%s)",
-                chat_id,
-                search_phone,
+            # Контакт найден, теперь ищем AVITO лид
+            leads = await amocrm_client.find_leads_by_contact(
+                contact_id=contact_id,
+                pipeline_id=lead_qualifier.PIPELINE_ID,
+            )
+
+            if not leads:
+                logger.info("❌ Лидов не найдено для контакта %s", contact_id)
+                return False
+
+            logger.info("🔍 Найдено %s лидов, ищем Avito лид...", len(leads))
+
+            # Ищем именно AVITO лид
+            for lead in leads:
+                custom_fields = lead.get("custom_fields_values", [])
+                for field in custom_fields:
+                    if field.get("field_name") == "Источник" or field.get("field_code") == "UTM_SOURCE":
+                        values = field.get("values", [])
+                        for value in values:
+                            if "avito" in value.get("value", "").lower():
+                                logger.info(
+                                    "✅ Найден АКТИВНЫЙ Avito лид: lead_id=%s",
+                                    lead["id"],
+                                )
+                                return True
+
+            logger.info(
+                "❌ Avito лид НЕ найден среди %s лидов (контакт существует, но Avito лида нет)",
+                len(leads),
             )
             return False
 
         except Exception as exc:  # noqa: BLE001
-            logger.error("Ошибка проверки контакта Avito: %s", exc)
+            logger.error("❌ Ошибка проверки Avito лида: %s", exc)
+            logger.exception(exc)
+            # ВАЖНО: При ошибке возвращаем False, чтобы попытаться создать лид
             return False
 
     async def update_lead_from_message(self, chat_id: str, message_text: str) -> None:
@@ -509,15 +658,22 @@ class AvitoLeadService:
         from app.services.crm.lead_qualifier import lead_qualifier
 
         try:
+            logger.info("🔄 Обновление Avito лида для chat_id=%s", chat_id)
+            
             amocrm_client = await get_amocrm_client()
-            search_phone = f"avito_user_{chat_id[:15]}"
+            # ВАЖНО: Используем первые 8 символов как везде
+            search_phone = f"avito_user_{chat_id[:8]}"
+            
+            logger.info("🔍 Поиск контакта для обновления: %s", search_phone)
             contact_id = await amocrm_client.find_contact_by_phone(search_phone)
 
             if not contact_id:
-                logger.debug(
-                    "Avito: контакт не найден для обновления chat_id=%s", chat_id
+                logger.warning(
+                    "⚠️ Avito: контакт не найден для обновления chat_id=%s", chat_id
                 )
                 return
+            
+            logger.info("✅ Контакт найден для обновления: contact_id=%s", contact_id)
 
             leads = await amocrm_client.find_leads_by_contact(
                 contact_id=contact_id,
@@ -525,30 +681,73 @@ class AvitoLeadService:
             )
 
             if not leads:
-                logger.debug(
-                    "Avito: активные лиды для обновления не найдены chat_id=%s", chat_id
+                logger.warning(
+                    "⚠️ Avito: активные лиды для обновления не найдены chat_id=%s", chat_id
                 )
                 return
 
-            lead = leads[0]
-            lead_id = lead["id"]
-            current_status_id = lead["status_id"]
+            logger.info("✅ Найдено %s активных лидов для контакта", len(leads))
+            
+            # ВАЖНО: Фильтруем лиды по источнику (ищем самый свежий Avito лид)
+            # Сортируем по ID (чем больше ID, тем новее лид) и берём последний
+            # Это гарантирует, что мы обновляем именно Avito лид, а не Telegram
+            avito_lead = None
+            for lead in sorted(leads, key=lambda x: x["id"], reverse=True):
+                logger.debug("Проверяем лид: lead_id=%s, name=%s", lead["id"], lead.get("name", ""))
+                # Avito лиды имеют название "Заявка от Avito User ..."
+                if "Avito" in lead.get("name", ""):
+                    avito_lead = lead
+                    logger.info("✅ Найден Avito лид: lead_id=%s", lead["id"])
+                    break
+            
+            # Если не нашли Avito лид, берём самый новый (последний созданный)
+            if not avito_lead:
+                logger.warning("⚠️ Не нашли лид с 'Avito' в названии, берём самый новый")
+                avito_lead = sorted(leads, key=lambda x: x["id"], reverse=True)[0]
+            
+            lead_id = avito_lead["id"]
+            current_status_id = avito_lead["status_id"]
+            
+            logger.info("✅ Выбран лид для обновления: lead_id=%s, current_status=%s", lead_id, current_status_id)
 
             qualification = await lead_qualifier.qualify_lead(
                 conversation_history=message_text,
                 user_message=message_text,
                 source="avito",
             )
+            
+            logger.info(
+                "📊 Avito обновление - квалификация: stage=%s, status_id=%s, confidence=%.2f",
+                qualification.stage,
+                qualification.status_id,
+                qualification.confidence,
+            )
 
-            if lead_qualifier.should_update_stage(
+            should_update = lead_qualifier.should_update_stage(
                 current_status_id=current_status_id,
                 new_status_id=qualification.status_id,
-            ):
-                await amocrm_client.update_lead_status(
+            )
+            
+            logger.info(
+                "🔍 Нужно обновить статус? %s (текущий: %s → новый: %s)",
+                should_update,
+                current_status_id,
+                qualification.status_id,
+            )
+
+            if should_update:
+                logger.info("🚀 Обновляем статус лида %s: %s → %s", lead_id, current_status_id, qualification.status_id)
+                success = await amocrm_client.update_lead_status(
                     lead_id=lead_id,
                     status_id=qualification.status_id,
                     pipeline_id=lead_qualifier.PIPELINE_ID,
                 )
+                if success:
+                    logger.info("✅ Статус лида %s успешно обновлён", lead_id)
+                else:
+                    logger.error("❌ Не удалось обновить статус лида %s", lead_id)
+            else:
+                logger.info("⏸️  Статус лида %s не требует обновления", lead_id)
 
             await self.save_conversation_to_amocrm(
                 lead_id=lead_id,

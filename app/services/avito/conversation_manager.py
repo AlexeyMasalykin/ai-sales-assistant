@@ -45,22 +45,41 @@ class AvitoConversationManager:
         2. Попытаться извлечь данные (имя, телефон, боль)
         3. Обновить контекст
         4. Определить текущее состояние FSM
-        5. Сгенерировать ответ в зависимости от состояния
-        6. Сохранить контекст в Redis
-        7. Вернуть ответ
+        5. Если получили телефон - создать лид и сгенерировать подтверждение
+        6. Иначе - сгенерировать обычный ответ
+        7. Сохранить контекст в Redis
+        8. Вернуть ответ
         """
         context = await self.get_context(chat_id)
         context.add_message(MessageRole.USER, message)
+        
+        # Запоминаем старое состояние
+        old_state = context.state
+        
         await self._try_extract_data(context, message)
         await self._update_state(context)
-        bot_response = await self._generate_response(context, message)
+        
+        # Если только что получили телефон - создаем лид и даем специальный ответ
+        if old_state != ConversationState.PHONE_COLLECTED and context.state == ConversationState.PHONE_COLLECTED:
+            # Запускаем создание лида в фоне (не ждем)
+            import asyncio
+            asyncio.create_task(self._create_lead(context))
+            
+            context.state = ConversationState.QUALIFIED
+            
+            # Специальный ответ-подтверждение (отправляется сразу!)
+            bot_response = (
+                f"Спасибо, {context.user_name}! ✅\n\n"
+                f"Я передал вашу заявку специалисту по {context.product_interest or 'автоматизации'} — "
+                f"он свяжется с вами в течение часа.\n\n"
+                f"Если у вас есть вопросы, я могу ответить прямо сейчас! 😊"
+            )
+        else:
+            # Обычный ответ
+            bot_response = await self._generate_response(context, message)
+        
         context.add_message(MessageRole.BOT, bot_response)
         await self.save_context(context)
-
-        if context.state == ConversationState.PHONE_COLLECTED:
-            await self._create_lead(context)
-            context.state = ConversationState.QUALIFIED
-            await self.save_context(context)
 
         return bot_response
 
@@ -69,44 +88,95 @@ class AvitoConversationManager:
         context: ConversationContext,
         message: str,
     ) -> None:
-        """Попытаться извлечь данные из сообщения."""
+        """Попытаться извлечь данные из сообщения (параллельно для скорости)."""
+        import asyncio
+        import time
+        
+        # Собираем задачи для параллельного выполнения
+        tasks = []
+        skipped = []
+        
         if not context.user_name:
-            name_result = await self.name_extractor.extract(message)
-            if name_result.value and name_result.confidence >= settings.name_extraction_threshold:
-                context.user_name = name_result.value
-                logger.info(
-                    "Avito: имя извлечено для %s: %s (confidence: %.2f)",
-                    context.chat_id,
-                    name_result.value,
-                    name_result.confidence,
-                )
-
+            tasks.append(("name", self.name_extractor.extract(message)))
+        else:
+            skipped.append("name")
+        
         if not context.phone:
-            phone_result = await self.phone_extractor.extract(message)
-            if phone_result.value and phone_result.confidence >= settings.phone_extraction_threshold:
-                context.phone = phone_result.value
-                logger.info(
-                    "Avito: телефон извлечён для %s: %s",
-                    context.chat_id,
-                    phone_result.value,
-                )
-
+            tasks.append(("phone", self.phone_extractor.extract(message)))
+        else:
+            skipped.append("phone")
+        
         if not context.pain_point:
             history = context.get_history_text(last_n=5)
-            need_result = await self.need_extractor.extract(history, message)
-
-            if (
-                need_result.value
-                and need_result.confidence >= settings.need_extraction_threshold
-            ):
-                data = json.loads(need_result.value)
-                context.pain_point = data.get("pain_point")
-                context.product_interest = data.get("product_interest")
-                logger.info(
-                    "Avito: потребность определена для %s: %s",
-                    context.chat_id,
-                    context.pain_point,
-                )
+            tasks.append(("need", self.need_extractor.extract(history, message)))
+        else:
+            skipped.append("need")
+        
+        # Логируем пропущенные извлечения для оптимизации
+        if skipped:
+            logger.info(
+                "Avito: пропущены извлечения для %s: %s (уже есть)",
+                context.chat_id,
+                ", ".join(skipped)
+            )
+        
+        # Выполняем все запросы параллельно
+        if tasks:
+            task_types = [t[0] for t in tasks]
+            task_coroutines = [t[1] for t in tasks]
+            
+            logger.info(
+                "Avito: запуск %d параллельных извлечений для %s: %s",
+                len(task_types),
+                context.chat_id,
+                ", ".join(task_types)
+            )
+            start_time = time.time()
+            results = await asyncio.gather(*task_coroutines, return_exceptions=True)
+            elapsed = time.time() - start_time
+            logger.info(
+                "Avito: параллельные извлечения завершены за %.2f сек",
+                elapsed
+            )
+            
+            # Обрабатываем результаты
+            for task_type, result in zip(task_types, results):
+                if isinstance(result, Exception):
+                    logger.error(f"Ошибка извлечения {task_type}: {result}")
+                    continue
+                
+                if task_type == "name":
+                    if result.value and result.confidence >= settings.name_extraction_threshold:
+                        context.user_name = result.value
+                        logger.info(
+                            "Avito: имя извлечено для %s: %s (confidence: %.2f)",
+                            context.chat_id,
+                            result.value,
+                            result.confidence,
+                        )
+                
+                elif task_type == "phone":
+                    if result.value and result.confidence >= settings.phone_extraction_threshold:
+                        context.phone = result.value
+                        logger.info(
+                            "Avito: телефон извлечён для %s: %s",
+                            context.chat_id,
+                            result.value,
+                        )
+                
+                elif task_type == "need":
+                    if (
+                        result.value
+                        and result.confidence >= settings.need_extraction_threshold
+                    ):
+                        data = json.loads(result.value)
+                        context.pain_point = data.get("pain_point")
+                        context.product_interest = data.get("product_interest")
+                        logger.info(
+                            "Avito: потребность определена для %s: %s",
+                            context.chat_id,
+                            context.pain_point,
+                        )
 
     async def _update_state(self, context: ConversationContext) -> None:
         """Обновить состояние FSM на основе собранных данных."""
@@ -128,6 +198,8 @@ class AvitoConversationManager:
         user_message: str,
     ) -> str:
         """Сгенерировать ответ в зависимости от состояния."""
+        import time
+        
         if context.state == ConversationState.QUALIFIED:
             return await self._generate_qualified_response(context, user_message)
 
@@ -144,6 +216,14 @@ class AvitoConversationManager:
             if not api_key:
                 logger.warning("OpenAI API ключ не задан, используется fallback")
                 return self._get_fallback_response(context.state, user_message)
+
+            logger.info(
+                "Avito: генерация ответа для %s (state=%s, prompt=%s)",
+                context.chat_id,
+                context.state.value,
+                prompt_key
+            )
+            start_time = time.time()
 
             client = AsyncOpenAI(api_key=api_key)
 
@@ -163,7 +243,13 @@ class AvitoConversationManager:
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
-                temperature=0.7,
+            )
+
+            elapsed = time.time() - start_time
+            logger.info(
+                "Avito: ответ сгенерирован за %.2f сек (модель: %s)",
+                elapsed,
+                settings.openai_conversation_model
             )
 
             return response.choices[0].message.content or "Извините, произошла ошибка"
@@ -187,32 +273,51 @@ class AvitoConversationManager:
         context: ConversationContext,
         user_message: str,
     ) -> str:
-        """Генерировать ответ через RAG с персонализацией."""
+        """Генерировать ответ через промпт qualified с RAG контекстом."""
         try:
-            from app.services.rag.answer import answer_generator
-            from app.services.avito.lead_service import avito_lead_service
+            from app.services.rag.search import document_search
+            from openai import AsyncOpenAI
 
-            amocrm_history = (
-                await avito_lead_service.get_conversation_history_from_amocrm(
-                    context.chat_id
-                )
+            # Ищем релевантные документы через RAG (limit=1 для скорости, кэш ускоряет)
+            documents = await document_search.search(user_message, limit=1)
+            rag_context = "\n\n".join(
+                f"📄 {doc['title']}:\n{doc['content'][:300]}"
+                for doc in documents
+            ) if documents else "Информация не найдена в базе знаний."
+
+            # Используем промпт qualified из conversation.poml
+            api_key = (
+                settings.openai_api_key.get_secret_value()
+                if settings.openai_api_key
+                else None
             )
+            if not api_key:
+                return "Спасибо за вопрос! Специалист ответит вам в ближайшее время."
 
-            answer = await answer_generator.generate_answer_with_context(
-                question=user_message,
+            client = AsyncOpenAI(api_key=api_key)
+
+            system, user = self.prompt_loader.get_prompt(
+                "conversation.poml",
+                "qualified",
                 user_name=context.user_name or "Клиент",
-                context=None,
-                amocrm_history=amocrm_history,
-                platform="avito",
+                phone=context.phone or "",
+                product_interest=context.product_interest or "",
+                user_message=user_message,
+                rag_context=rag_context,
             )
 
-            if context.user_name and not answer.startswith(context.user_name):
-                answer = f"{context.user_name}, {answer}"
+            response = await client.chat.completions.create(
+                model=settings.openai_conversation_model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            )
 
-            return answer
+            return response.choices[0].message.content or "Извините, произошла ошибка"
 
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"Ошибка RAG ответа: {exc}")
+            logger.error(f"Ошибка генерации qualified ответа: {exc}")
             return "Спасибо за вопрос! Специалист ответит вам в ближайшее время."
 
     def _get_fallback_response(
@@ -298,3 +403,4 @@ class AvitoConversationManager:
 
 
 conversation_manager = AvitoConversationManager()
+

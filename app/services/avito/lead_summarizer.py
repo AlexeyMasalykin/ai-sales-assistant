@@ -49,7 +49,6 @@ class LeadSummarizer:
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
-                temperature=0.3,
             )
 
             return (
@@ -83,7 +82,6 @@ class LeadSummarizer:
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
-                temperature=0.3,
             )
 
             return (

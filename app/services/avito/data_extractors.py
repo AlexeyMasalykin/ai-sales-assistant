@@ -56,7 +56,6 @@ class NameExtractor(BaseExtractor):
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
-                temperature=0.3,
                 response_format={"type": "json_object"},
             )
 
@@ -156,7 +155,6 @@ class NeedExtractor(BaseExtractor):
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
-                temperature=0.3,
                 response_format={"type": "json_object"},
             )
 

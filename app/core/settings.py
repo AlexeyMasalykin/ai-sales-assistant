@@ -34,8 +34,16 @@ class Settings(BaseSettings):
         description="OpenAI API ключ для LLM квалификации лидов",
     )
     openai_model: str = Field(
-        default="gpt-4o",
         description="Модель OpenAI, используемая для генерации ответов/документов",
+    )
+    openai_conversation_model: str = Field(
+        description="Модель OpenAI для генерации ответов в Avito диалоге",
+    )
+    openai_extraction_model: str = Field(
+        description="Модель OpenAI для извлечения данных из сообщений",
+    )
+    openai_summarization_model: str = Field(
+        description="Модель OpenAI для генерации саммари",
     )
     anthropic_api_key: SecretStr | None = None
 
@@ -53,6 +61,14 @@ class Settings(BaseSettings):
     avito_cache_ttl_seconds: int = 3_600
     avito_sync_interval_minutes: int = 60
     avito_sync_enabled: bool = True
+    avito_conversation_enabled: bool = Field(
+        default=False,
+        description="Включена ли FSM система прогрева лидов в Avito",
+    )
+    avito_conversation_ttl: int = Field(
+        default=604_800,
+        description="TTL хранения контекста диалога в секундах",
+    )
 
     # Telegram
     telegram_bot_token: SecretStr = SecretStr("test")
@@ -103,6 +119,13 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
     session_ttl_days: int = 30
     max_concurrent_users: int = 100
+    prompts_dir: str | None = Field(
+        default=None,
+        description="Каталог с .poml промптами",
+    )
+    name_extraction_threshold: float = Field(default=0.7)
+    phone_extraction_threshold: float = Field(default=0.8)
+    need_extraction_threshold: float = Field(default=0.6)
 
     # PDF генерация
     max_pdf_size_mb: int = Field(default=10)

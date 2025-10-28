@@ -93,8 +93,6 @@ class LeadQualifier:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=0.3,
-                max_tokens=500,
                 response_format={"type": "json_object"},
             )
 
@@ -244,64 +242,52 @@ class LeadQualifier:
             return self._fallback_qualification("")
 
     def _fallback_qualification(self, user_message: str) -> LeadQualificationResult:
-        """Простая квалификация без LLM (fallback)."""
+        """Простая квалификация без LLM (fallback).
+        
+        ВАЖНО: fallback используется только при ошибках GPT.
+        По умолчанию всегда возвращаем first_contact для безопасности.
+        """
         text_lower = user_message.lower()
 
-        hot_decision_triggers = [
+        # Только очень явные триггеры для продвинутых стадий
+        very_hot_triggers = [
             "хочу купить",
-            "готов купить",
+            "готов купить", 
             "отправьте кп",
-            "коммерческое предложение",
-            "когда можем начать",
-        ]
-
-        hot_contract_triggers = [
-            "договор",
-            "согласен",
-            "подписать",
-            "оплатить",
-            "счёт",
+            "отправьте счет",
+            "готовы подписать",
         ]
 
         warm_triggers = [
             "сколько стоит",
-            "цена",
-            "стоимость",
-            "тариф",
-            "какие условия",
-            "сроки внедрения",
+            "какая цена",
+            "какая стоимость",
         ]
 
-        if any(trigger in text_lower for trigger in hot_contract_triggers):
-            return LeadQualificationResult(
-                stage="contract",
-                temperature="hot",
-                confidence=0.7,
-                reasoning="Обсуждение договора/оплаты (fallback)",
-                status_id=self.STAGE_TO_STATUS["contract"],
-            )
-
-        if any(trigger in text_lower for trigger in hot_decision_triggers):
+        # Очень явные триггеры решения
+        if any(trigger in text_lower for trigger in very_hot_triggers):
             return LeadQualificationResult(
                 stage="decision",
                 temperature="hot",
-                confidence=0.7,
+                confidence=0.6,
                 reasoning="Явное намерение купить (fallback)",
                 status_id=self.STAGE_TO_STATUS["decision"],
             )
 
+        # Вопросы о цене
         if any(trigger in text_lower for trigger in warm_triggers):
             return LeadQualificationResult(
                 stage="negotiation",
                 temperature="warm",
-                confidence=0.6,
-                reasoning="Вопросы о цене/условиях (fallback)",
+                confidence=0.5,
+                reasoning="Вопросы о цене (fallback)",
                 status_id=self.STAGE_TO_STATUS["negotiation"],
             )
 
+        # DEFAULT: всегда first_contact для безопасности
         return LeadQualificationResult(
             stage="first_contact",
-            temperature="cold",
+            temperature="warm",
             confidence=0.5,
             reasoning="Первичное обращение (fallback)",
             status_id=self.STAGE_TO_STATUS["first_contact"],
