@@ -140,7 +140,7 @@ class AvitoLeadService:
                 ]
             else:
                 # Обычное сообщение
-                note_parts = [f"👤 Пользователь: {user_message}"]
+            note_parts = [f"👤 Пользователь: {user_message}"]
 
             if qualification:
                 note_parts.append(

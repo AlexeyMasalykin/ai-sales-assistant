@@ -100,12 +100,12 @@ class AvitoConversationManager:
             tasks.append(("name", self.name_extractor.extract(message)))
         else:
             skipped.append("name")
-        
+
         if not context.phone:
             tasks.append(("phone", self.phone_extractor.extract(message)))
         else:
             skipped.append("phone")
-        
+
         if not context.pain_point:
             history = context.get_history_text(last_n=5)
             tasks.append(("need", self.need_extractor.extract(history, message)))
@@ -168,22 +168,28 @@ class AvitoConversationManager:
                     if (
                         result.value
                         and result.confidence >= settings.need_extraction_threshold
-                    ):
+            ):
                         data = json.loads(result.value)
-                        context.pain_point = data.get("pain_point")
-                        context.product_interest = data.get("product_interest")
-                        logger.info(
-                            "Avito: потребность определена для %s: %s",
-                            context.chat_id,
-                            context.pain_point,
-                        )
+                context.pain_point = data.get("pain_point")
+                context.product_interest = data.get("product_interest")
+                logger.info(
+                    "Avito: потребность определена для %s: %s",
+                    context.chat_id,
+                    context.pain_point,
+                )
 
     async def _update_state(self, context: ConversationContext) -> None:
         """Обновить состояние FSM на основе собранных данных."""
         if context.state == ConversationState.START:
             context.state = ConversationState.GREETING
         elif context.state == ConversationState.GREETING:
-            if context.user_name:
+            # Гибкий переход: если есть потребность - можно перейти к NEED_IDENTIFIED даже без имени
+            if context.pain_point:
+                context.state = ConversationState.NEED_IDENTIFIED
+                logger.info(
+                    "Avito: переход GREETING -> NEED_IDENTIFIED (потребность определена без имени)"
+                )
+            elif context.user_name:
                 context.state = ConversationState.NAME_COLLECTED
         elif context.state == ConversationState.NAME_COLLECTED:
             if context.pain_point:

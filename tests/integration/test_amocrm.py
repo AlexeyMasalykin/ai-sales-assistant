@@ -6,6 +6,8 @@ import pytest
 from app.integrations.amocrm.models import LeadCreateRequest
 from app.services.crm.amocrm_service import amocrm_service
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.mark.asyncio
 async def test_create_lead_from_conversation():

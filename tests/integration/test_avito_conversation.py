@@ -67,44 +67,44 @@ async def test_full_conversation_flow(fake_redis):
     mock_async_openai = create_mock_openai_client()
 
     with patch("openai.AsyncOpenAI", mock_async_openai):
-        manager = AvitoConversationManager()
-        chat_id = "test_chat_integration"
+    manager = AvitoConversationManager()
+    chat_id = "test_chat_integration"
 
         # Шаг 1: Приветствие
-        response1 = await manager.handle_message(
-            chat_id,
-            "Здравствуйте, интересует автоматизация",
-        )
-        assert "обращаться" in response1.lower()
+    response1 = await manager.handle_message(
+        chat_id,
+        "Здравствуйте, интересует автоматизация",
+    )
+    assert "обращаться" in response1.lower()
 
-        context = await manager.get_context(chat_id)
-        assert context.state == ConversationState.GREETING
+    context = await manager.get_context(chat_id)
+    assert context.state == ConversationState.GREETING
 
         # Шаг 2: Имя
-        response2 = await manager.handle_message(chat_id, "Меня зовут Иван")
-        assert "иван" in response2.lower()
+    response2 = await manager.handle_message(chat_id, "Меня зовут Иван")
+    assert "иван" in response2.lower()
 
-        context = await manager.get_context(chat_id)
-        assert context.state == ConversationState.NAME_COLLECTED
-        assert context.user_name == "Иван"
+    context = await manager.get_context(chat_id)
+    assert context.state == ConversationState.NAME_COLLECTED
+    assert context.user_name == "Иван"
 
         # Шаг 3: Потребность
-        response3 = await manager.handle_message(
-            chat_id,
-            "Менеджеры тратят 2 часа в день на CRM",
-        )
+    response3 = await manager.handle_message(
+        chat_id,
+        "Менеджеры тратят 2 часа в день на CRM",
+    )
 
-        context = await manager.get_context(chat_id)
-        assert context.state == ConversationState.NEED_IDENTIFIED
-        assert context.pain_point is not None
+    context = await manager.get_context(chat_id)
+    assert context.state == ConversationState.NEED_IDENTIFIED
+    assert context.pain_point is not None
 
         # Шаг 4: Телефон
-        response4 = await manager.handle_message(chat_id, "+7 999 123-45-67")
-        assert "передал" in response4.lower() or "специалист" in response4.lower()
+    response4 = await manager.handle_message(chat_id, "+7 999 123-45-67")
+    assert "передал" in response4.lower() or "специалист" in response4.lower()
 
-        context = await manager.get_context(chat_id)
-        assert context.state == ConversationState.QUALIFIED
-        assert context.phone == "+79991234567"
+    context = await manager.get_context(chat_id)
+    assert context.state == ConversationState.QUALIFIED
+    assert context.phone == "+79991234567"
 
         # Очистка
         await fake_redis.delete(f"avito:conversation:{chat_id}")

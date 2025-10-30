@@ -5,6 +5,9 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
 from app.services.avito.auth import AvitoAuthManager
 from app.services.avito.exceptions import AvitoAuthError
+from tests.conftest import skip_without_avito
+
+pytestmark = [pytest.mark.integration, skip_without_avito]
 
 
 @pytest.mark.asyncio

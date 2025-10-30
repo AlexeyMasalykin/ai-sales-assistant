@@ -35,13 +35,17 @@ services:
     container_name: sales-assistant-redis
     restart: unless-stopped
     command: >
-      redis-server --appendonly yes
-    ports:
-    - "6379:6379"
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    # ВАЖНО: Порт НЕ открыт для внешнего доступа!
+    # Redis доступен только внутри Docker сети backend
     networks:
       - backend
     volumes:
       - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
 
   nginx:
     image: nginx:1.25-alpine

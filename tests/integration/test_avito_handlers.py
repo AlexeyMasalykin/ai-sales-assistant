@@ -5,6 +5,9 @@ from __future__ import annotations
 import pytest
 
 from app.services.avito.handlers import AvitoMessageHandlers
+from tests.conftest import skip_without_avito
+
+pytestmark = [pytest.mark.integration, skip_without_avito]
 
 
 @pytest.mark.asyncio

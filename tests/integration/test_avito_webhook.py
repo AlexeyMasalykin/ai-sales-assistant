@@ -9,6 +9,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from tests.conftest import skip_without_avito
+
+pytestmark = [pytest.mark.integration, skip_without_avito]
 
 
 @pytest.fixture

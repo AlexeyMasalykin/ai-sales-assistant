@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://test/test"
 
     # Redis
-    upstash_redis_url: str = "redis://localhost:6379"
+    upstash_redis_url: str = Field(
+        description="Redis URL для кэша (формат: redis://:password@host:port/db)"
+    )
 
     # LLM
     llm_provider: Literal["openai", "anthropic", "openrouter"] = "openai"

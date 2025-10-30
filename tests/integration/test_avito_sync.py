@@ -10,6 +10,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.services.avito.sync import AvitoSyncManager
+from tests.conftest import skip_without_avito
+
+pytestmark = [pytest.mark.integration, skip_without_avito]
 
 
 @pytest.mark.asyncio
