@@ -203,12 +203,44 @@ class TelegramLeadService:
             )
 
             if leads:
-                existing_lead = leads[0]
+                logger.info(
+                    "✅ Найдено %s активных лидов для контакта, фильтруем по источнику Telegram",
+                    len(leads),
+                )
+
+                # Фильтруем лиды по источнику (Telegram)
+                telegram_lead = None
+                for lead in leads:
+                    custom_fields = lead.get("custom_fields_values", [])
+                    for field in custom_fields:
+                        if field.get("field_name") == "Источник" or field.get("field_code") == "UTM_SOURCE":
+                            values = field.get("values", [])
+                            for value in values:
+                                if "telegram" in value.get("value", "").lower():
+                                    telegram_lead = lead
+                                    logger.info(
+                                        "✅ Найден Telegram лид для обновления: lead_id=%s",
+                                        lead["id"],
+                                    )
+                                    break
+                            if telegram_lead:
+                                break
+                    if telegram_lead:
+                        break
+
+                if not telegram_lead:
+                    logger.warning(
+                        "⚠️ Telegram лид не найден среди %s лидов, используем первый",
+                        len(leads),
+                    )
+                    telegram_lead = leads[0]
+
+                existing_lead = telegram_lead
                 lead_id = existing_lead["id"]
                 current_status_id = existing_lead["status_id"]
 
                 logger.info(
-                    "✅ Найден активный лид: lead_id=%s, status_id=%s",
+                    "✅ Найден активный Telegram лид: lead_id=%s, status_id=%s",
                     lead_id,
                     current_status_id,
                 )
@@ -346,8 +378,40 @@ class TelegramLeadService:
                 logger.debug(f"Лиды для contact_id={contact_id} не найдены")
                 return ""
 
-            lead_id = leads[0]["id"]
-            logger.info(f"✅ Найден лид {lead_id} для загрузки истории")
+            logger.info(
+                "✅ Найдено %s активных лидов для контакта, фильтруем по источнику Telegram",
+                len(leads),
+            )
+
+            # Фильтруем лиды по источнику (Telegram)
+            telegram_lead = None
+            for lead in leads:
+                custom_fields = lead.get("custom_fields_values", [])
+                for field in custom_fields:
+                    if field.get("field_name") == "Источник" or field.get("field_code") == "UTM_SOURCE":
+                        values = field.get("values", [])
+                        for value in values:
+                            if value.get("value", "").lower() == "telegram":
+                                telegram_lead = lead
+                                logger.info(
+                                    "✅ Найден Telegram лид для истории: lead_id=%s",
+                                    lead["id"],
+                                )
+                                break
+                        if telegram_lead:
+                            break
+                if telegram_lead:
+                    break
+
+            if not telegram_lead:
+                logger.warning(
+                    "⚠️ Telegram лид не найден среди %s лидов, используем первый",
+                    len(leads),
+                )
+                telegram_lead = leads[0]
+
+            lead_id = telegram_lead["id"]
+            logger.info("📖 Загружаем историю из Telegram лида: lead_id=%s", lead_id)
 
             notes = await amocrm_client.get_lead_notes(lead_id=lead_id, limit=10)
 

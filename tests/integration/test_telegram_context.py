@@ -8,6 +8,9 @@ import pytest
 
 from app.services.telegram.handlers import TelegramHandlers
 from app.services.web.chat_session import session_manager
+from tests.conftest import skip_without_telegram
+
+pytestmark = [pytest.mark.integration, skip_without_telegram]
 
 
 def _setup_in_memory_redis(mock_redis: AsyncMock) -> None:

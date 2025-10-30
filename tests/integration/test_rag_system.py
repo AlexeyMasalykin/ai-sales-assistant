@@ -5,6 +5,8 @@ import pytest
 from app.services.rag.answer import answer_generator
 from app.services.rag.search import document_search
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.mark.asyncio
 async def test_document_search_pricing(load_knowledge_base) -> None:

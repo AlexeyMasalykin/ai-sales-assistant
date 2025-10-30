@@ -1,5 +1,6 @@
 """Pytest configuration."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -12,6 +13,33 @@ import pytest  # noqa: E402
 from unittest.mock import AsyncMock  # noqa: E402
 
 from app.core.database import close_engine  # noqa: E402
+
+
+# ========== Проверка секретов ==========
+
+def has_avito_secrets() -> bool:
+    """Проверяет наличие Avito API секретов."""
+    return bool(
+        os.getenv("AVITO_CLIENT_ID") and os.getenv("AVITO_CLIENT_SECRET")
+    )
+
+
+def has_telegram_secrets() -> bool:
+    """Проверяет наличие Telegram Bot токена."""
+    return bool(os.getenv("TELEGRAM_BOT_TOKEN"))
+
+
+# ========== Маркеры для pytest ==========
+
+skip_without_avito = pytest.mark.skipif(
+    not has_avito_secrets(),
+    reason="Avito secrets not configured. Set AVITO_CLIENT_ID and AVITO_CLIENT_SECRET",
+)
+
+skip_without_telegram = pytest.mark.skipif(
+    not has_telegram_secrets(),
+    reason="Telegram secrets not configured. Set TELEGRAM_BOT_TOKEN",
+)
 
 # Флаг, указывающий, загружены ли документы в БД
 _documents_loaded = False
@@ -51,6 +79,24 @@ async def mock_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     monkeypatch.setattr("app.core.cache.redis_client", mock)
     # chat_session импортирует redis_client из app.core.cache, патчить не нужно
     return mock
+
+
+@pytest.fixture()
+async def fake_redis(monkeypatch: pytest.MonkeyPatch):
+    """Использует fakeredis - полнофункциональную in-memory имитацию Redis."""
+    import fakeredis.aioredis
+    
+    # Создаем fake Redis клиент
+    fake_client = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    
+    # Подменяем глобальный redis_client
+    monkeypatch.setattr("app.core.cache.redis_client", fake_client)
+    
+    yield fake_client
+    
+    # Очистка после теста
+    await fake_client.flushall()
+    await fake_client.aclose()
 
 
 @pytest.fixture(scope="function")

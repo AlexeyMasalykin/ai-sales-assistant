@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -16,8 +17,24 @@ from app.services.rag.embeddings import embeddings_service
 class DocumentSearch:
     """Выполняет поиск документов по запросу пользователя."""
 
+    def __init__(self):
+        # Кэш для RAG-запросов (query_hash -> результаты)
+        self._cache: dict[str, list[dict[str, Any]]] = {}
+        self._cache_max_size = 100
+
+    def _get_cache_key(self, query: str, limit: int) -> str:
+        """Генерировать ключ кэша для запроса."""
+        content = f"{query.lower().strip()}:{limit}"
+        return hashlib.md5(content.encode()).hexdigest()
+
     async def search(self, query: str, limit: int = 3) -> list[dict[str, Any]]:
         """Возвращает релевантные документы для указанного запроса."""
+        # Проверяем кэш
+        cache_key = self._get_cache_key(query, limit)
+        if cache_key in self._cache:
+            logger.info("RAG кэш-попадание: '%s'", query[:50])
+            return self._cache[cache_key]
+        
         logger.info("RAG поиск документов: '%s' (limit=%s)", query[:50], limit)
 
         if embeddings_service.client is None:
@@ -76,6 +93,14 @@ class DocumentSearch:
         ]
 
         logger.info("Найдено %s релевантных документов.", len(documents))
+        
+        # Сохраняем в кэш
+        self._cache[cache_key] = documents
+        # Ограничиваем размер кэша
+        if len(self._cache) > self._cache_max_size:
+            # Удаляем самый старый элемент (первый)
+            self._cache.pop(next(iter(self._cache)))
+        
         return documents
 
     def _fallback_search(self, query: str, limit: int) -> list[dict[str, Any]]:
@@ -108,6 +133,13 @@ class DocumentSearch:
             "Найдено %s документов локальным поиском.",
             len(top_docs),
         )
+        
+        # Сохраняем в кэш
+        cache_key = self._get_cache_key(query, limit)
+        self._cache[cache_key] = top_docs
+        if len(self._cache) > self._cache_max_size:
+            self._cache.pop(next(iter(self._cache)))
+        
         return top_docs
 
 

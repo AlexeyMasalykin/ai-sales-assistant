@@ -6,6 +6,8 @@ import pytest
 
 from app.services.documents.generator import document_generator
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.mark.asyncio
 async def test_generate_price_list_pdf() -> None:
